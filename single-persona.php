@@ -19,8 +19,8 @@ $bio = bnwp_get_meta('_bnwp_bio');
   </div></div>
 </div>
 <div class="container py-5"><?php the_content(); ?></div>
-<div class="container py-5"><h2>Blogs</h2><ul>
-<?php if ($username) : $blogs = new WP_Query(array('post_type' => 'post', 'posts_per_page' => 10, 'meta_key' => '_bnwp_user', 'meta_value' => $username)); while ($blogs->have_posts()) : $blogs->the_post(); ?><li><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></li><?php endwhile; wp_reset_postdata(); endif; ?>
+<div class="container py-5"><h2><?php echo esc_html(bnwp_text('ব্লগ', 'Blogs')); ?></h2><ul>
+<?php if ($username) : $blogs = new WP_Query(array('post_type' => 'post', 'posts_per_page' => 10, 'meta_query' => array(array('key' => '_bnwp_user', 'value' => $username), array('key' => '_bnwp_language', 'value' => bnwp_current_language())))); while ($blogs->have_posts()) : $blogs->the_post(); ?><li><a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a></li><?php endwhile; wp_reset_postdata(); endif; ?>
 </ul></div>
 <?php endwhile; ?>
 <?php get_footer(); ?>

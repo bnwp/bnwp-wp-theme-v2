@@ -7,14 +7,57 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('BNWP_THEME_VERSION', '1.1.0');
+define('BNWP_THEME_VERSION', '1.4.0');
 
 
 
 function bnwp_current_language() {
-    $lang = isset($_GET['lang']) ? sanitize_key(wp_unslash($_GET['lang'])) : '';
-    return $lang === 'en' ? 'en' : 'bn';
+    if (isset($_GET['lang'])) {
+        $requested_language = sanitize_key(wp_unslash($_GET['lang']));
+        if (in_array($requested_language, array('bn', 'en'), true)) {
+            return $requested_language;
+        }
+    }
+
+    if (is_singular()) {
+        $post = get_queried_object();
+        if ($post instanceof WP_Post) {
+            $post_language = sanitize_key(get_post_meta($post->ID, '_bnwp_language', true));
+            if (in_array($post_language, array('bn', 'en'), true)) {
+                return $post_language;
+            }
+            if (substr($post->post_name, -3) === '-en') {
+                return 'en';
+            }
+        }
+    }
+
+    return 'bn';
 }
+
+function bnwp_text($bengali, $english) {
+    return bnwp_current_language() === 'en' ? $english : $bengali;
+}
+
+function bnwp_site_name() {
+    return bnwp_current_language() === 'en' ? 'Bangla WikiConnect' : get_bloginfo('name');
+}
+
+function bnwp_document_title_parts($title) {
+    if (bnwp_current_language() !== 'en') {
+        return $title;
+    }
+
+    $site_name = get_bloginfo('name');
+    foreach ($title as $part => $value) {
+        if ($value === $site_name) {
+            $title[$part] = bnwp_site_name();
+        }
+    }
+
+    return $title;
+}
+add_filter('document_title_parts', 'bnwp_document_title_parts');
 
 function bnwp_lang_arg($url, $lang = null) {
     $lang = $lang ? $lang : bnwp_current_language();
@@ -39,8 +82,25 @@ function bnwp_clean_image_url($url, $fallback = '') {
     return $url;
 }
 
+function bnwp_page_url($base_slug, $lang = null) {
+    $lang = $lang ? $lang : bnwp_current_language();
+    $target_slug = $lang === 'en' ? $base_slug . '-en' : $base_slug;
+    $page = get_page_by_path($target_slug, OBJECT, 'page');
+
+    if (!$page && $lang === 'en') {
+        $page = get_page_by_path($base_slug, OBJECT, 'page');
+    }
+
+    $url = $page ? get_permalink($page) : home_url('/' . trim($base_slug, '/') . '/');
+    return bnwp_lang_arg($url, $lang);
+}
+
 function bnwp_translation_url($target_lang) {
     $target_lang = $target_lang === 'en' ? 'en' : 'bn';
+
+    if (is_front_page()) {
+        return bnwp_lang_arg(home_url('/'), $target_lang);
+    }
 
     if (is_singular()) {
         $post = get_queried_object();
@@ -53,8 +113,10 @@ function bnwp_translation_url($target_lang) {
 
             $match = get_page_by_path($target_slug, OBJECT, $type);
             if ($match) {
-                return get_permalink($match);
+                return bnwp_lang_arg(get_permalink($match), $target_lang);
             }
+
+            return bnwp_lang_arg(get_permalink($post), $target_lang);
         }
     }
 
@@ -66,7 +128,10 @@ function bnwp_translation_url($target_lang) {
         return !is_wp_error($base) ? bnwp_lang_arg($base, $target_lang) : bnwp_lang_arg(home_url('/persona/'), $target_lang);
     }
     if (is_home()) {
-        return bnwp_lang_arg(home_url('/posts/'), $target_lang);
+        return bnwp_page_url('posts', $target_lang);
+    }
+    if (is_search()) {
+        return add_query_arg('s', get_search_query(), bnwp_lang_arg(home_url('/'), $target_lang));
     }
 
     return bnwp_lang_arg(home_url('/'), $target_lang);
@@ -76,7 +141,6 @@ function bnwp_language_switcher() {
     $current = bnwp_current_language();
     $target  = $current === 'en' ? 'bn' : 'en';
 
-    $current_label = $current === 'en' ? 'English' : 'বাংলা';
     $target_label  = $target === 'en' ? 'English' : 'বাংলা';
 
     ?>
@@ -86,10 +150,11 @@ function bnwp_language_switcher() {
             href="<?php echo esc_url(bnwp_translation_url($target)); ?>"
             aria-label="<?php echo esc_attr('Switch to ' . $target_label); ?>"
             title="<?php echo esc_attr('Switch to ' . $target_label); ?>"
+            hreflang="<?php echo esc_attr($target); ?>"
         >
             <i class="bi bi-translate me-1"></i>
             <span class="d-none d-md-inline">
-                <?php echo esc_html($current_label); ?>
+                <?php echo esc_html($target_label); ?>
             </span>
         </a>
     </div>
@@ -135,6 +200,40 @@ function bnwp_enqueue_assets() {
     wp_enqueue_script('bnwp-colormode', get_template_directory_uri() . '/assets/js/colormode.js', array(), BNWP_THEME_VERSION, true);
 }
 add_action('wp_enqueue_scripts', 'bnwp_enqueue_assets');
+
+/**
+ * Load the WordPress media picker only on BNWP content edit screens.
+ */
+function bnwp_enqueue_admin_media($hook_suffix) {
+    if (!in_array($hook_suffix, array('post.php', 'post-new.php'), true)) {
+        return;
+    }
+
+    $screen = get_current_screen();
+    if (!$screen || !in_array($screen->post_type, array('project', 'persona'), true)) {
+        return;
+    }
+
+    wp_enqueue_media();
+    wp_enqueue_style(
+        'bnwp-admin',
+        get_template_directory_uri() . '/assets/css/admin.css',
+        array(),
+        BNWP_THEME_VERSION
+    );
+    wp_enqueue_script(
+        'bnwp-admin-media',
+        get_template_directory_uri() . '/assets/js/admin-media.js',
+        array('jquery'),
+        BNWP_THEME_VERSION,
+        true
+    );
+    wp_localize_script('bnwp-admin-media', 'bnwpMedia', array(
+        'frameTitle' => __('Choose an image', 'bnwp'),
+        'buttonText' => __('Use this image', 'bnwp'),
+    ));
+}
+add_action('admin_enqueue_scripts', 'bnwp_enqueue_admin_media');
 
 function bnwp_register_content_types() {
     register_post_type('project', array(
@@ -214,14 +313,70 @@ function bnwp_reading_time($post_id = null) {
     return max(1, (int) ceil($count / 200));
 }
 
+function bnwp_bengali_numerals($value) {
+    return strtr((string) $value, array(
+        '0' => '০',
+        '1' => '১',
+        '2' => '২',
+        '3' => '৩',
+        '4' => '৪',
+        '5' => '৫',
+        '6' => '৬',
+        '7' => '৭',
+        '8' => '৮',
+        '9' => '৯',
+    ));
+}
+
+function bnwp_post_date($post_id = null) {
+    $timestamp = get_post_timestamp($post_id ? $post_id : get_the_ID());
+    if (!$timestamp) {
+        return '';
+    }
+
+    if (bnwp_current_language() === 'en') {
+        return wp_date('F j, Y', $timestamp);
+    }
+
+    $months = array(
+        1 => 'জানুয়ারি',
+        2 => 'ফেব্রুয়ারি',
+        3 => 'মার্চ',
+        4 => 'এপ্রিল',
+        5 => 'মে',
+        6 => 'জুন',
+        7 => 'জুলাই',
+        8 => 'আগস্ট',
+        9 => 'সেপ্টেম্বর',
+        10 => 'অক্টোবর',
+        11 => 'নভেম্বর',
+        12 => 'ডিসেম্বর',
+    );
+
+    $day = bnwp_bengali_numerals(wp_date('j', $timestamp));
+    $month = $months[(int) wp_date('n', $timestamp)];
+    $year = bnwp_bengali_numerals(wp_date('Y', $timestamp));
+
+    return sprintf('%s %s, %s', $day, $month, $year);
+}
+
+function bnwp_posts_pagination($args = array()) {
+    the_posts_pagination(wp_parse_args($args, array(
+        'mid_size' => 2,
+        'prev_text' => bnwp_text('পূর্ববর্তী', 'Previous'),
+        'next_text' => bnwp_text('পরবর্তী', 'Next'),
+        'screen_reader_text' => bnwp_text('লেখার পৃষ্ঠা', 'Posts navigation'),
+    )));
+}
+
 function bnwp_primary_menu_fallback() {
     $lang = bnwp_current_language();
     $labels = $lang === 'en'
         ? array('home' => 'Home', 'about' => 'About', 'news' => 'Newsroom', 'blog' => 'Blog', 'members' => 'Members', 'projects' => 'Projects')
         : array('home' => 'নীড়', 'about' => 'পরিচিতি', 'news' => 'বার্তাকক্ষ', 'blog' => 'ব্লগ', 'members' => 'সদস্য', 'projects' => 'প্রকল্প');
-    $about = $lang === 'en' ? home_url('/about-en/') : home_url('/about/');
-    $news = $lang === 'en' ? home_url('/newsroom-en/') : home_url('/newsroom/');
-    $posts = $lang === 'en' ? home_url('/posts-en/') : home_url('/posts/');
+    $about = bnwp_page_url('about', $lang);
+    $news = bnwp_page_url('newsroom', $lang);
+    $posts = bnwp_page_url('posts', $lang);
     ?>
     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item"><a class="nav-link" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'), $lang)); ?>"><?php echo esc_html($labels['home']); ?></a></li>
@@ -259,10 +414,44 @@ function bnwp_input_row($label, $name, $value, $type = 'text') {
     );
 }
 
+function bnwp_media_input_row($label, $name, $value) {
+    $has_image = $value !== '';
+    ?>
+    <div class="bnwp-media-field">
+        <label for="<?php echo esc_attr($name); ?>"><?php echo esc_html($label); ?></label>
+        <div class="bnwp-media-controls">
+            <input
+                class="widefat"
+                type="text"
+                inputmode="url"
+                data-bnwp-media-url
+                id="<?php echo esc_attr($name); ?>"
+                name="<?php echo esc_attr($name); ?>"
+                value="<?php echo esc_attr($value); ?>"
+            >
+            <button
+                type="button"
+                class="button bnwp-select-media"
+                data-target="<?php echo esc_attr($name); ?>"
+            ><?php esc_html_e('Choose image', 'bnwp'); ?></button>
+            <button
+                type="button"
+                class="button-link-delete bnwp-remove-media<?php echo $has_image ? '' : ' is-hidden'; ?>"
+                data-target="<?php echo esc_attr($name); ?>"
+            ><?php esc_html_e('Clear', 'bnwp'); ?></button>
+        </div>
+        <p class="description"><?php esc_html_e('Choose from the Media Library or paste an external image URL.', 'bnwp'); ?></p>
+        <div class="bnwp-media-preview<?php echo $has_image ? '' : ' is-hidden'; ?>">
+            <img src="<?php echo esc_url($value); ?>" alt="">
+        </div>
+    </div>
+    <?php
+}
+
 function bnwp_project_meta_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
-    bnwp_input_row('Logo URL', '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
-    bnwp_input_row('Cover URL', '_bnwp_cover', bnwp_get_meta('_bnwp_cover', $post->ID));
+    bnwp_media_input_row('Logo', '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
+    bnwp_media_input_row('Cover', '_bnwp_cover', bnwp_get_meta('_bnwp_cover', $post->ID));
     bnwp_input_row('Wiki URL', '_bnwp_wiki', bnwp_get_meta('_bnwp_wiki', $post->ID));
     bnwp_input_row('Lead', '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_input_row('Language', '_bnwp_language', bnwp_get_meta('_bnwp_language', $post->ID, 'bn'));
@@ -275,7 +464,7 @@ function bnwp_persona_meta_box($post) {
     bnwp_input_row('Wiki Username', '_bnwp_username', bnwp_get_meta('_bnwp_username', $post->ID));
     bnwp_input_row('Location', '_bnwp_location', bnwp_get_meta('_bnwp_location', $post->ID));
     bnwp_input_row('Email', '_bnwp_email', bnwp_get_meta('_bnwp_email', $post->ID), 'email');
-    bnwp_input_row('Image URL', '_bnwp_img', bnwp_get_meta('_bnwp_img', $post->ID));
+    bnwp_media_input_row('Profile Image', '_bnwp_img', bnwp_get_meta('_bnwp_img', $post->ID));
     bnwp_input_row('Short Bio', '_bnwp_bio', bnwp_get_meta('_bnwp_bio', $post->ID));
     bnwp_input_row('Language', '_bnwp_language', bnwp_get_meta('_bnwp_language', $post->ID, 'bn'));
 }
@@ -297,9 +486,13 @@ function bnwp_save_post_meta($post_id) {
         return;
     }
     $keys = array('_bnwp_language', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki', '_bnwp_lead', '_bnwp_name', '_bnwp_role', '_bnwp_username', '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user');
+    $url_keys = array('_bnwp_logo', '_bnwp_cover', '_bnwp_wiki', '_bnwp_img');
     foreach ($keys as $key) {
         if (isset($_POST[$key])) {
-            $value = sanitize_text_field(wp_unslash($_POST[$key]));
+            $raw_value = wp_unslash($_POST[$key]);
+            $value = in_array($key, $url_keys, true)
+                ? esc_url_raw($raw_value)
+                : sanitize_text_field($raw_value);
             update_post_meta($post_id, $key, $value);
         }
     }
@@ -326,6 +519,9 @@ function bnwp_nav_menu_link_attributes($atts, $item, $args, $depth) {
             $atts['role'] = 'button';
             $atts['data-bs-toggle'] = 'dropdown';
             $atts['aria-expanded'] = 'false';
+        }
+        if (bnwp_current_language() === 'en' && !empty($atts['href']) && strpos($atts['href'], home_url('/')) === 0) {
+            $atts['href'] = bnwp_lang_arg($atts['href'], 'en');
         }
     }
     return $atts;

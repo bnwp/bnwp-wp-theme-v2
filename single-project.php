@@ -5,7 +5,7 @@
     <div class="container py-5">
       <h1 class="text-body-emphasis"><?php the_title(); ?></h1>
       <?php if ($lead) : ?><p class="fs-5 col-md-8"><?php echo esc_html($lead); ?></p><?php endif; ?>
-      <?php if ($wiki) : ?><div class="mb-5"><a href="<?php echo esc_url($wiki); ?>" class="btn btn-primary btn-lg px-4">উইকিতে দেখুন</a></div><?php endif; ?>
+      <?php if ($wiki) : ?><div class="mb-5"><a href="<?php echo esc_url($wiki); ?>" class="btn btn-primary btn-lg px-4"><?php echo esc_html(bnwp_text('উইকিতে দেখুন', 'View on the wiki')); ?></a></div><?php endif; ?>
     </div>
   </div>
   <div class="container"><hr><?php the_content(); ?></div>

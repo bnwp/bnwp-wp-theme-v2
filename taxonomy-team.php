@@ -8,9 +8,9 @@
       <h3 class="cots__name fw-normal"><?php the_title(); ?></h3>
       <?php if ($username) : ?><small class="d-block bnwp-member-username">@<?php echo esc_html($username); ?></small><?php endif; ?>
       <?php if ($role) : ?><small class="cots__role"><?php echo esc_html($role); ?></small><?php endif; ?>
-      <p class="mb-0 mt-auto"><a class="py-3 d-block bnwp-member-link" href="<?php the_permalink(); ?>">বিস্তারিত দেখুন <i class="bi bi-arrow-right-circle-fill"></i></a></p>
+      <p class="mb-0 mt-auto"><a class="py-3 d-block bnwp-member-link" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php echo esc_html(bnwp_text('বিস্তারিত দেখুন', 'View details')); ?> <i class="bi bi-arrow-right-circle-fill"></i></a></p>
     </div></div>
-  <?php endwhile; the_posts_pagination(); else : ?><p>এই দলে কোনো সদস্য পাওয়া যায়নি।</p><?php endif; ?>
+  <?php endwhile; bnwp_posts_pagination(); else : ?><p><?php echo esc_html(bnwp_text('এই দলে কোনো সদস্য পাওয়া যায়নি।', 'No members found in this team.')); ?></p><?php endif; ?>
   </div>
 </section>
 <?php get_footer(); ?>
