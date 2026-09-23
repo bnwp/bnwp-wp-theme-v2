@@ -210,27 +210,22 @@ if ($people->have_posts()) : ?>
 <section class="section">
     <div class="wrap" style="text-align:center;">
         <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_text('আমাদের অংশীদার', 'Our partners')); ?></h2>
+        <?php $partners = bnwp_partners(); ?>
+        <?php if ($partners) : ?>
         <div class="partners" data-stagger style="margin-top:2rem;">
-            <?php
-            // file, name, intrinsic w, intrinsic h, url
-            $partners = array(
-                array('Wikimedia_Foundation_logo_-_vertical.png', 'Wikimedia Foundation', 614, 459, 'https://wikimediafoundation.org/'),
-                array('Wikimedia_Bangladesh_logo.png',            'Wikimedia Bangladesh',  500, 512, 'https://bd.wikimedia.org/'),
-                array('WikiNandini_text_logo_2024.png',           'WikiNandini',          1042, 240, 'https://meta.wikimedia.org/wiki/WikiNandini'),
-                array('Wiki_Loves_Women_South_Asia.png',          'Wiki Loves Women',      695, 353, 'https://meta.wikimedia.org/wiki/Wiki_Loves_Women'),
-            );
-            foreach ($partners as $p) :
-                $h = 58; // must match .partner img height in app.css
-                $w = (int) round($h * ($p[2] / $p[3]));
-            ?>
-                <a class="partner reveal" href="<?php echo esc_url($p[4]); ?>" rel="noopener">
-                    <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/' . $p[0]); ?>"
-                         width="<?php echo esc_attr($w); ?>" height="<?php echo esc_attr($h); ?>"
-                         alt="<?php echo esc_attr($p[1]); ?>" loading="lazy" decoding="async">
-                    <span class="partner__name"><?php echo esc_html($p[1]); ?></span>
-                </a>
+            <?php foreach ($partners as $p) : ?>
+                <?php $tag = $p['url'] !== '' ? 'a' : 'div'; ?>
+                <<?php echo $tag; ?> class="partner reveal"<?php
+                    echo $p['url'] !== '' ? ' href="' . esc_url($p['url']) . '" rel="noopener"' : '';
+                ?>>
+                    <?php if ($p['image'] !== '') : ?>
+                        <?php bnwp_image($p['image'], array('w' => 250, 'alt' => $p['name'], 'fit' => 'contain')); ?>
+                    <?php endif; ?>
+                    <span class="partner__name"><?php echo esc_html($p['name']); ?></span>
+                </<?php echo $tag; ?>>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
     </div>
 </section>
 

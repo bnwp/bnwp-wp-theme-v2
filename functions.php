@@ -434,6 +434,19 @@ function bnwp_encode_url($url) {
     return empty($parts['query']) ? $out : $out . '?' . $parts['query'];
 }
 
+/** Attachment ID for a URL on this site, or 0. Cached — it is a DB lookup. */
+function bnwp_attachment_id($url) {
+    static $cache = array();
+
+    if ($url === '' || isset($cache[$url])) {
+        return isset($cache[$url]) ? $cache[$url] : 0;
+    }
+    if (strpos($url, home_url()) !== 0) {
+        return $cache[$url] = 0;
+    }
+    return $cache[$url] = (int) attachment_url_to_postid($url);
+}
+
 /**
  * Validate a stored image reference and size it down where possible.
  */
@@ -465,6 +478,35 @@ function bnwp_image($url, $args = array()) {
         'fallback' => '',
         'fit'      => 'cover',
     ));
+
+    $resolved = bnwp_commons_url(trim((string) $url));
+
+    /*
+     * Media-library images: hand off to WordPress so it serves one of the
+     * sizes it already generated, with a srcset. Emitting the original meant
+     * the browser was downscaling a 960px logo into a 48px tile — a 20x
+     * reduction, which is what made them look soft.
+     */
+    $attachment = bnwp_attachment_id($resolved);
+    if ($attachment) {
+        $attrs = array(
+            'alt'      => $a['alt'],
+            'decoding' => 'async',
+            'style'    => 'object-fit:' . $a['fit'],
+        );
+        if ($a['class'] !== '') {
+            $attrs['class'] = $a['class'];
+        }
+        if ($a['loading'] === 'eager') {
+            $attrs['fetchpriority'] = 'high';
+        } else {
+            $attrs['loading'] = $a['loading'];
+        }
+
+        $size = array((int) $a['w'], (int) ($a['h'] ? $a['h'] : $a['w']));
+        echo wp_get_attachment_image($attachment, $size, false, $attrs);
+        return;
+    }
 
     $src = bnwp_img_url($url, $a['w'], $a['fallback']);
 
@@ -1292,6 +1334,105 @@ function bnwp_stats() {
     return $rows;
 }
 
+/* -------------------------------------------------------------------------
+ * Partners and social channels
+ *
+ * These used to be written into the templates. They are content, not design,
+ * so they live in the Customiser now — with the previous values as the
+ * defaults, so an untouched site looks exactly as it did.
+ * ---------------------------------------------------------------------- */
+
+function bnwp_partners_default() {
+    return implode("\n", array(
+        'উইকিমিডিয়া ফাউন্ডেশন | Wikimedia Foundation | https://wikimediafoundation.org/ | Wikimedia_Foundation_logo_-_vertical.png',
+        'উইকিমিডিয়া বাংলাদেশ | Wikimedia Bangladesh | https://wikimedia.org.bd/ | Wikimedia_Bangladesh_logo.png',
+        'উইকিনন্দিনী | WikiNandini | https://meta.wikimedia.org/wiki/WikiNandini | WikiNandini_text_logo_2024.png',
+        'উইকি লাভস উইমেন | Wiki Loves Women | https://meta.wikimedia.org/wiki/Wiki_Loves_Women | Wiki_Loves_Women_South_Asia.png',
+    ));
+}
+
+/** One partner per line: Bengali name | English name | URL | image */
+function bnwp_partners() {
+    $raw  = get_theme_mod('bnwp_partners', bnwp_partners_default());
+    $rows = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        $p = array_map('trim', explode('|', $line));
+        $name = bnwp_is_en() && !empty($p[1]) ? $p[1] : (isset($p[0]) ? $p[0] : '');
+        if ($name === '') {
+            continue;
+        }
+
+        // A bare filename means a logo shipped with the theme.
+        $image = isset($p[3]) ? $p[3] : '';
+        if ($image !== '' && strpos($image, '/') === false && strpos($image, ':') === false) {
+            $image = get_template_directory_uri() . '/assets/uploads/' . $image;
+        }
+
+        $rows[] = array(
+            'name'  => $name,
+            'url'   => isset($p[2]) ? $p[2] : '',
+            'image' => $image,
+        );
+    }
+    return $rows;
+}
+
+function bnwp_socials_default() {
+    return implode("\n", array(
+        'Facebook | https://facebook.com/banglawikiconnect | facebook',
+        'YouTube | https://youtube.com/@banglawikiconnect | youtube',
+        'LinkedIn | https://www.linkedin.com/company/wikiconnect | linkedin',
+        'Telegram | https://t.me/bnwikiconnect | telegram',
+        'GitHub | https://github.com/bnwp | github',
+    ));
+}
+
+/** The inline icon set. Anything unknown falls back to a generic link glyph. */
+function bnwp_social_icon($key) {
+    $icons = array(
+        'facebook' => 'M15 8h-2.5c-.5 0-1 .4-1 1v2H15l-.4 3h-3v8H8.4v-8H6v-3h2.4V9.2C8.4 6.9 9.9 5 12.6 5H15Z',
+        'youtube'  => 'M21.6 7.2c-.2-.9-.9-1.6-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4c-.9.2-1.6.9-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8c.2.9.9 1.6 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8ZM10 15V9l5 3-5 3Z',
+        'linkedin' => 'M6.9 8.5H4V20h2.9V8.5ZM5.4 4a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4ZM20 13.4c0-3-1.6-4.4-3.8-4.4-1.7 0-2.5.9-3 1.6V8.5H10.4V20h2.9v-6.2c0-1.3.6-2.2 1.8-2.2s1.9.8 1.9 2.2V20H20Z',
+        'telegram' => 'M21.7 4.4 2.9 11.6c-.9.3-.9 1.6 0 1.9l4.6 1.5 1.8 5.4c.2.7 1.1.9 1.6.3l2.5-2.7 4.7 3.4c.6.5 1.5.1 1.7-.6l3-14.8c.2-.9-.7-1.6-1.1-1.6ZM9.6 14.5l8.2-5.3-6.9 6.5-.4 3.4-.9-4.6Z',
+        'github'   => 'M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .3.3.7 1 .7 2v2.9c0 .3.2.6.7.5A10 10 0 0 0 12 2Z',
+        'instagram'=> 'M12 7.4A4.6 4.6 0 1 0 12 16.6 4.6 4.6 0 0 0 12 7.4Zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm5.9-7.8a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0ZM21 8.1c-.1-1.5-.4-2.8-1.5-3.8C18.4 3.2 17.1 3 15.6 2.9 14.1 2.8 9.9 2.8 8.4 2.9 6.9 3 5.6 3.2 4.5 4.3 3.4 5.3 3.1 6.6 3 8.1c-.1 1.5-.1 5.8 0 7.3.1 1.5.4 2.8 1.5 3.8 1.1 1.1 2.4 1.3 3.9 1.4 1.5.1 5.7.1 7.2 0 1.5-.1 2.8-.3 3.9-1.4 1.1-1 1.4-2.3 1.5-3.8.1-1.5.1-5.8 0-7.3Zm-1.9 8.9c-.3.8-1 1.4-1.8 1.7-1.2.5-4.2.4-5.6.4s-4.4.1-5.6-.4c-.8-.3-1.5-.9-1.8-1.7-.5-1.2-.4-4.2-.4-5.6s-.1-4.4.4-5.6c.3-.8 1-1.4 1.8-1.7C7.3 3.6 10.3 3.7 11.7 3.7s4.4-.1 5.6.4c.8.3 1.5.9 1.8 1.7.5 1.2.4 4.2.4 5.6s.1 4.4-.4 5.6Z',
+        'mastodon' => 'M12 2c-4 0-7 1-7 1S3 4.4 3 8.6c0 4.9-.3 9.3 4.4 10.6 1.8.5 3.3.6 4.5.5 2.2-.1 3.4-.8 3.4-.8l-.1-1.6s-1.6.5-3.3.4c-1.7-.1-3.5-.2-3.8-2.3 0-.2 0-.4 0-.6 3.7.9 6.8.4 7.7.3 2.4-.3 4.5-1.8 4.8-3.2.4-2.2.4-5.3.4-5.3C21 4.4 19 3 19 3s-3-1-7-1Zm4.4 10.2h-1.9V8.6c0-1-.4-1.5-1.3-1.5-1 0-1.4.6-1.4 1.8v2.5h-1.8V8.9c0-1.2-.5-1.8-1.4-1.8-.9 0-1.3.5-1.3 1.5v3.6H5.4V8.5c0-1 .3-1.8.8-2.4.5-.6 1.2-.9 2.1-.9 1 0 1.8.4 2.3 1.2l.5.8.5-.8c.5-.8 1.3-1.2 2.3-1.2.9 0 1.6.3 2.1.9.5.6.8 1.4.8 2.4v3.7Z',
+    );
+    $key = strtolower(trim($key));
+    // the fallback is a filled glyph too, since .channel svg uses fill
+    return isset($icons[$key])
+        ? $icons[$key]
+        : 'M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3ZM5 5h5v2H7v10h10v-3h2v5H5V5Z';
+}
+
+/** One channel per line: Label | URL | icon */
+function bnwp_socials() {
+    $raw  = get_theme_mod('bnwp_socials', bnwp_socials_default());
+    $rows = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        $p = array_map('trim', explode('|', $line));
+        if (empty($p[0]) || empty($p[1])) {
+            continue;
+        }
+        $rows[] = array(
+            'label' => $p[0],
+            'url'   => $p[1],
+            'icon'  => isset($p[2]) ? $p[2] : $p[0],
+        );
+    }
+    return $rows;
+}
+
 function bnwp_customize($wp_customize) {
     $wp_customize->add_section('bnwp_impact', array(
         'title'       => __('Impact numbers', 'bnwp'),
@@ -1310,6 +1451,40 @@ function bnwp_customize($wp_customize) {
         'section'  => 'bnwp_impact',
         'type'     => 'textarea',
         'input_attrs' => array('rows' => 8, 'style' => 'font-family:ui-monospace,monospace;'),
+    ));
+
+    $wp_customize->add_section('bnwp_partners_section', array(
+        'title'       => __('Partners', 'bnwp'),
+        'priority'    => 31,
+        'description' => __('One partner per line:<br><strong>Bengali name | English name | URL | image</strong><br><br>The image can be a file shipped with the theme (just the filename), a full URL, or a Wikimedia Commons title such as File:Name.svg.', 'bnwp'),
+    ));
+    $wp_customize->add_setting('bnwp_partners', array(
+        'default'           => bnwp_partners_default(),
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport'         => 'refresh',
+    ));
+    $wp_customize->add_control('bnwp_partners', array(
+        'label'       => __('Rows', 'bnwp'),
+        'section'     => 'bnwp_partners_section',
+        'type'        => 'textarea',
+        'input_attrs' => array('rows' => 6, 'style' => 'font-family:ui-monospace,monospace;'),
+    ));
+
+    $wp_customize->add_section('bnwp_socials_section', array(
+        'title'       => __('Social channels', 'bnwp'),
+        'priority'    => 32,
+        'description' => __('One channel per line:<br><strong>Label | URL | icon</strong><br><br>Known icons: facebook, youtube, linkedin, telegram, github, instagram, mastodon. Anything else gets a generic link icon. Shown on the Contact page.', 'bnwp'),
+    ));
+    $wp_customize->add_setting('bnwp_socials', array(
+        'default'           => bnwp_socials_default(),
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport'         => 'refresh',
+    ));
+    $wp_customize->add_control('bnwp_socials', array(
+        'label'       => __('Rows', 'bnwp'),
+        'section'     => 'bnwp_socials_section',
+        'type'        => 'textarea',
+        'input_attrs' => array('rows' => 6, 'style' => 'font-family:ui-monospace,monospace;'),
     ));
 }
 add_action('customize_register', 'bnwp_customize');
