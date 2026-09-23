@@ -203,6 +203,7 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 .site-header {
   position: sticky; top: 0; z-index: 100;
+  background: var(--bg); /* fallback where color-mix is unsupported */
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: saturate(150%) blur(10px);
   border-bottom: 1px solid var(--line);
