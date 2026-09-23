@@ -8,7 +8,7 @@ get_header();
 
 if (is_tax('team')) {
     $term     = get_queried_object();
-    $heading  = $term ? $term->name : bnwp_text('দল', 'Team');
+    $heading  = $term ? bnwp_term_name($term) : bnwp_text('দল', 'Team');
     $subtitle = $term && $term->description !== '' ? $term->description : '';
 } else {
     $heading  = bnwp_text('সদস্যবৃন্দ', 'Members');
@@ -41,7 +41,7 @@ $teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
                 ?>
                     <a class="chip <?php echo $active ? 'chip--live' : ''; ?>" style="text-decoration:none;padding:.5rem 1rem;"
                        href="<?php echo esc_url(bnwp_lang_arg($link)); ?>"
-                       <?php echo $active ? 'aria-current="page"' : ''; ?>><?php echo esc_html($t->name); ?></a>
+                       <?php echo $active ? 'aria-current="page"' : ''; ?>><?php echo esc_html(bnwp_term_name($t)); ?></a>
                 <?php endforeach; ?>
             </nav>
         <?php endif; ?>

@@ -449,6 +449,68 @@ function bnwp_project_status_label($key) {
     return isset($all[$key]) ? $all[$key] : '';
 }
 
+function bnwp_status_chip_class($key) {
+    $map = array('ongoing' => 'chip--live', 'upcoming' => 'chip--soon', 'completed' => 'chip--past');
+    return isset($map[$key]) ? $map[$key] : 'chip--past';
+}
+
+/**
+ * Taxonomy terms carry a single name, so the team filter stayed Bengali in
+ * the English view. An optional "English name" on each term fixes that
+ * without duplicating the terms themselves.
+ */
+function bnwp_term_name($term) {
+    if (!$term instanceof WP_Term) {
+        return '';
+    }
+    if (!bnwp_is_en()) {
+        return $term->name;
+    }
+
+    $en = get_term_meta($term->term_id, '_bnwp_name_en', true);
+    if ($en !== '') {
+        return $en;
+    }
+
+    // Sensible defaults for the three teams the site ships with, so English
+    // works without anyone having to fill the field in first.
+    $known = array(
+        'cot'       => 'Core Team',
+        'technical' => 'Technical Team',
+        'jury'      => 'Jury Coordination',
+    );
+    return isset($known[$term->slug]) ? $known[$term->slug] : $term->name;
+}
+
+/** "English name" field on the team taxonomy. */
+function bnwp_team_name_en_field($term) {
+    $value = is_object($term) ? get_term_meta($term->term_id, '_bnwp_name_en', true) : '';
+    if (is_object($term)) {
+        echo '<tr class="form-field"><th scope="row"><label for="bnwp_name_en">' . esc_html__('English name', 'bnwp') . '</label></th><td>';
+    } else {
+        echo '<div class="form-field"><label for="bnwp_name_en">' . esc_html__('English name', 'bnwp') . '</label>';
+    }
+    printf(
+        '<input type="text" name="_bnwp_name_en" id="bnwp_name_en" value="%s"><p class="description">%s</p>',
+        esc_attr($value),
+        esc_html__('Shown instead of the Bengali name when the site is viewed in English.', 'bnwp')
+    );
+    echo is_object($term) ? '</td></tr>' : '</div>';
+}
+add_action('team_add_form_fields', 'bnwp_team_name_en_field');
+add_action('team_edit_form_fields', 'bnwp_team_name_en_field');
+
+function bnwp_save_team_name_en($term_id) {
+    if (!current_user_can('manage_categories')) {
+        return;
+    }
+    if (isset($_POST['_bnwp_name_en'])) {
+        update_term_meta($term_id, '_bnwp_name_en', sanitize_text_field(wp_unslash($_POST['_bnwp_name_en'])));
+    }
+}
+add_action('created_team', 'bnwp_save_team_name_en');
+add_action('edited_team', 'bnwp_save_team_name_en');
+
 function bnwp_register_content_types() {
     register_post_type('project', array(
         'labels' => array(
@@ -489,6 +551,14 @@ function bnwp_register_content_types() {
         'hierarchical' => false,
         'rewrite'      => array('slug' => 'teams', 'with_front' => false),
         'show_in_rest' => true,
+    ));
+
+    register_term_meta('team', '_bnwp_name_en', array(
+        'type'              => 'string',
+        'single'            => true,
+        'show_in_rest'      => true,
+        'sanitize_callback' => 'sanitize_text_field',
+        'auth_callback'     => function () { return current_user_can('manage_categories'); },
     ));
 
     foreach (bnwp_meta_keys() as $key) {
@@ -755,6 +825,55 @@ function bnwp_seo_head() {
 }
 add_action('wp_head', 'bnwp_seo_head', 5);
 
+/**
+ * Yoast wins over the theme's own tags, but it has no per-page descriptions
+ * configured — so every page was being served the site tagline. Feed it the
+ * theme's description and image when it has nothing better of its own.
+ */
+function bnwp_yoast_metadesc($desc) {
+    $desc = trim((string) $desc);
+    if ($desc !== '' && $desc !== get_bloginfo('description')) {
+        return $desc; // an author wrote one; leave it alone
+    }
+    $ours = bnwp_meta_description();
+    return $ours !== '' ? $ours : $desc;
+}
+add_filter('wpseo_metadesc', 'bnwp_yoast_metadesc');
+add_filter('wpseo_opengraph_desc', 'bnwp_yoast_metadesc');
+add_filter('wpseo_twitter_description', 'bnwp_yoast_metadesc');
+
+function bnwp_yoast_og_image($image) {
+    if (is_singular(array('project', 'persona')) && !has_post_thumbnail()) {
+        return bnwp_og_image();
+    }
+    return $image;
+}
+add_filter('wpseo_opengraph_image', 'bnwp_yoast_og_image');
+
+/** The trail shown on single views, as data for search engines. */
+function bnwp_breadcrumb_trail() {
+    $trail = array(array('name' => bnwp_text('প্রচ্ছদ', 'Home'), 'url' => home_url('/')));
+
+    if (is_singular('project')) {
+        $link = get_post_type_archive_link('project');
+        $trail[] = array('name' => bnwp_text('প্রকল্পসমূহ', 'Projects'), 'url' => $link ? $link : home_url('/projects/'));
+        $trail[] = array('name' => wp_strip_all_tags(get_the_title()), 'url' => get_permalink());
+    } elseif (is_singular('persona')) {
+        $link = get_post_type_archive_link('persona');
+        $trail[] = array('name' => bnwp_text('সদস্যবৃন্দ', 'Members'), 'url' => $link ? $link : home_url('/persona/'));
+        $trail[] = array('name' => wp_strip_all_tags(get_the_title()), 'url' => get_permalink());
+    } elseif (is_singular('post')) {
+        $trail[] = array('name' => bnwp_text('পোস্টসমূহ', 'Posts'), 'url' => bnwp_page_url('posts'));
+        $trail[] = array('name' => wp_strip_all_tags(get_the_title()), 'url' => get_permalink());
+    } elseif (is_page() && !is_front_page()) {
+        $trail[] = array('name' => wp_strip_all_tags(get_the_title()), 'url' => get_permalink());
+    } else {
+        return array();
+    }
+
+    return $trail;
+}
+
 /** Organization + Article structured data. */
 function bnwp_schema() {
     $graph = array();
@@ -806,6 +925,20 @@ function bnwp_schema() {
             'url'            => get_permalink(),
             'memberOf'       => array('@id' => home_url('/#organization')),
         );
+    }
+
+    $trail = bnwp_breadcrumb_trail();
+    if (count($trail) > 1) {
+        $items = array();
+        foreach ($trail as $i => $crumb) {
+            $items[] = array(
+                '@type'    => 'ListItem',
+                'position' => $i + 1,
+                'name'     => $crumb['name'],
+                'item'     => $crumb['url'],
+            );
+        }
+        $graph[] = array('@type' => 'BreadcrumbList', 'itemListElement' => $items);
     }
 
     printf(

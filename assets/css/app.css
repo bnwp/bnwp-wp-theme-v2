@@ -20,7 +20,7 @@
   --bg-sunken:     #F1ECE2;
   --ink:           #17150F;
   --ink-soft:      #57524A;
-  --ink-faint:     #8A8275;
+  --ink-faint:     #777065;
   --line:          #E2DACB;
   --line-strong:   #CFC5B1;
 
@@ -32,6 +32,10 @@
   --accent-3:      #990000;
   --accent-3-soft: #F7E4E2;
   --on-accent:     #FFFFFF;
+
+  /* chip text, darkened to clear 4.5:1 against its own tinted background */
+  --chip-live-ink: #2B7656;
+  --chip-soon-ink: #862017;
 
   --shadow-1: 0 1px 2px rgba(23, 21, 15, .05);
   --shadow-2: 0 6px 24px -8px rgba(23, 21, 15, .18);
@@ -63,7 +67,7 @@
   --bg-sunken:     #0C0D0B;
   --ink:           #F2EFE6;
   --ink-soft:      #ACA89C;
-  --ink-faint:     #7E7A70;
+  --ink-faint:     #817D72;
   --line:          #2E3129;
   --line-strong:   #434740;
 
@@ -75,6 +79,9 @@
   --accent-3:      #F0938C;
   --accent-3-soft: #2E1613;
   --on-accent:     #06131C;
+
+  --chip-live-ink: #9FE3C4;
+  --chip-soon-ink: #F0A9A2;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
   --shadow-2: 0 6px 24px -8px rgba(0, 0, 0, .6);
@@ -473,7 +480,8 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   background: var(--bg-sunken); color: var(--ink-soft);
   white-space: nowrap;
 }
-.chip--live { background: var(--accent-2-soft); color: var(--accent-2); }
+.chip--live { background: var(--accent-2-soft); color: var(--chip-live-ink); }
+.chip--soon { background: var(--accent-3-soft); color: var(--chip-soon-ink); }
 .chip--past { background: var(--bg-sunken); color: var(--ink-soft); }
 
 /* --- 10. People --------------------------------------------------------- */
@@ -660,8 +668,16 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 }
 .partner:hover img { transform: scale(1.06); }
 
-/* logos are full colour; in dark mode only the flat black marks need lifting */
-:root[data-theme="dark"] .partner img { filter: brightness(1.06); }
+/* Logos are full colour. Several of these marks are black-on-transparent
+   (Wikimedia Foundation, Wikimedia Bangladesh), which would vanish on a dark
+   tile — so in dark mode the tile becomes a light plate, the way print does it. */
+:root[data-theme="dark"] .partner {
+  background: #F4F2ED;
+  border-color: #2E3129;
+}
+:root[data-theme="dark"] .partner__name { color: #4A453C; }
+:root[data-theme="dark"] .partner:hover { color: #00558A; }
+:root[data-theme="dark"] .partner:hover .partner__name { color: #00558A; }
 
 .partner__name {
   font-size: .875rem; line-height: 1.35; text-align: center;

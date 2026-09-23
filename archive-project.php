@@ -34,7 +34,7 @@ get_header();
                             <span></span>
                         <?php endif; ?>
                         <?php if ($status) : ?>
-                            <span class="chip <?php echo $status === 'ongoing' ? 'chip--live' : 'chip--past'; ?>"><?php
+                            <span class="chip <?php echo esc_attr(bnwp_status_chip_class($status)); ?>"><?php
                                 echo esc_html(bnwp_project_status_label($status));
                             ?></span>
                         <?php endif; ?>

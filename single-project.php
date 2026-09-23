@@ -28,7 +28,7 @@ while (have_posts()) : the_post();
                 <div>
                     <?php if ($status) : ?>
                         <p style="margin:0 0 1rem;">
-                            <span class="chip <?php echo $status === 'ongoing' ? 'chip--live' : 'chip--past'; ?>"><?php echo esc_html(bnwp_project_status_label($status)); ?></span>
+                            <span class="chip <?php echo esc_attr(bnwp_status_chip_class($status)); ?>"><?php echo esc_html(bnwp_project_status_label($status)); ?></span>
                         </p>
                     <?php endif; ?>
 

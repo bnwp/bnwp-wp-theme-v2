@@ -44,7 +44,7 @@ while (have_posts()) : the_post();
                             <?php foreach ($terms as $t) :
                                 $link = get_term_link($t);
                                 if (is_wp_error($link)) { continue; } ?>
-                                <a class="chip" style="text-decoration:none;" href="<?php echo esc_url(bnwp_lang_arg($link)); ?>"><?php echo esc_html($t->name); ?></a>
+                                <a class="chip" style="text-decoration:none;" href="<?php echo esc_url(bnwp_lang_arg($link)); ?>"><?php echo esc_html(bnwp_term_name($t)); ?></a>
                             <?php endforeach; ?>
                         </p>
                     <?php endif; ?>
