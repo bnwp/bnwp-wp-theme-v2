@@ -33,11 +33,7 @@ get_header();
                         <?php else : ?>
                             <span></span>
                         <?php endif; ?>
-                        <?php if ($status) : ?>
-                            <span class="chip <?php echo esc_attr(bnwp_status_chip_class($status)); ?>"><?php
-                                echo esc_html(bnwp_project_status_label($status));
-                            ?></span>
-                        <?php endif; ?>
+                        <?php bnwp_status_chip($status); ?>
                     </div>
                     <h2 class="card__title">
                         <a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a>

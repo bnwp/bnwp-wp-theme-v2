@@ -27,9 +27,7 @@ while (have_posts()) : the_post();
             <div class="layout-aside" style="align-items:center;">
                 <div>
                     <?php if ($status) : ?>
-                        <p style="margin:0 0 1rem;">
-                            <span class="chip <?php echo esc_attr(bnwp_status_chip_class($status)); ?>"><?php echo esc_html(bnwp_project_status_label($status)); ?></span>
-                        </p>
+                        <p style="margin:0 0 1rem;"><?php bnwp_status_chip($status); ?></p>
                     <?php endif; ?>
 
                     <h1><?php the_title(); ?></h1>

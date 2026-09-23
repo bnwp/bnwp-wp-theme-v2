@@ -651,9 +651,11 @@ function bnwp_person_rows($query) {
 
 function bnwp_project_statuses() {
     return array(
+        // "আসন্ন" rather than "শীঘ্রই" — it is the word the organisation already
+        // uses for upcoming work on its own newsroom page.
         'ongoing'   => bnwp_text('চলমান', 'Ongoing'),
-        'upcoming'  => bnwp_text('শীঘ্রই', 'Upcoming'),
-        'completed' => bnwp_text('সমাপ্ত', 'Completed'),
+        'upcoming'  => bnwp_text('আসন্ন', 'Upcoming'),
+        'completed' => bnwp_text('সমাপ্ত', 'Ended'),
     );
 }
 
@@ -664,7 +666,20 @@ function bnwp_project_status_label($key) {
 
 function bnwp_status_chip_class($key) {
     $map = array('ongoing' => 'chip--live', 'upcoming' => 'chip--soon', 'completed' => 'chip--past');
-    return isset($map[$key]) ? $map[$key] : 'chip--past';
+    return 'chip--status ' . (isset($map[$key]) ? $map[$key] : 'chip--past');
+}
+
+/** The whole chip, or nothing when a project has no status set. */
+function bnwp_status_chip($status) {
+    $label = bnwp_project_status_label($status);
+    if ($label === '') {
+        return;
+    }
+    printf(
+        '<span class="chip %s">%s</span>',
+        esc_attr(bnwp_status_chip_class($status)),
+        esc_html($label)
+    );
 }
 
 /**

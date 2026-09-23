@@ -519,6 +519,37 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .chip--soon { background: var(--accent-3-soft); color: var(--chip-soon-ink); }
 .chip--past { background: var(--bg-sunken); color: var(--ink-soft); }
 
+/* A status chip carries a dot, so the state reads at a glance and does not
+   depend on colour alone — which matters for colour-blind readers. */
+.chip--status {
+  display: inline-flex; align-items: center; gap: .45rem;
+  border: 1px solid transparent;
+}
+.chip--status::before {
+  content: "";
+  width: 7px; height: 7px; flex: none;
+  border-radius: 999px;
+  background: currentColor;
+}
+.chip--live { border-color: color-mix(in srgb, var(--chip-live-ink) 26%, transparent); }
+.chip--soon { border-color: color-mix(in srgb, var(--chip-soon-ink) 26%, transparent); }
+.chip--past { border-color: var(--line); }
+
+/* only the live one breathes */
+.chip--live::before { animation: bnwp-pulse 2.4s ease-in-out infinite; }
+@keyframes bnwp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.78); }
+}
+
+/* an ended project is stated plainly, not shouted */
+.chip--past { font-weight: 500; }
+.chip--past::before { opacity: .55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chip--live::before { animation: none; }
+}
+
 /* --- 10. People --------------------------------------------------------- */
 
 .person {

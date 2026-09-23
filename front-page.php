@@ -91,14 +91,18 @@ if ($projects->have_posts()) : ?>
 
         <div class="grid grid--3" data-stagger>
             <?php while ($projects->have_posts()) : $projects->the_post();
-                $logo = bnwp_get_meta('_bnwp_logo');
-                $lead = bnwp_get_meta_i18n('_bnwp_lead');
+                $logo   = bnwp_get_meta('_bnwp_logo');
+                $lead   = bnwp_get_meta_i18n('_bnwp_lead');
+                $status = bnwp_get_meta('_bnwp_status');
             ?>
             <article class="card reveal">
                 <div class="card__top">
                     <?php if ($logo) : ?>
                         <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '')); ?></span>
+                    <?php else : ?>
+                        <span></span>
                     <?php endif; ?>
+                    <?php bnwp_status_chip($status); ?>
                 </div>
                 <h3 class="card__title">
                     <a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a>
