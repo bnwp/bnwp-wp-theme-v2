@@ -233,6 +233,26 @@ function bnwp_lang_has_content($post_type, $lang = null) {
     return $cache[$key] = !empty($probe->posts);
 }
 
+/**
+ * English pages use an "-en" slug, which would miss their page-{slug}.php
+ * template — "posts-en" would fall through to page.php and render blank.
+ * Let a twin borrow its Bengali counterpart's template.
+ */
+function bnwp_twin_page_template($template) {
+    if (!is_page()) {
+        return $template;
+    }
+
+    $post = get_queried_object();
+    if (!$post instanceof WP_Post || substr($post->post_name, -3) !== '-en') {
+        return $template;
+    }
+
+    $found = locate_template('page-' . substr($post->post_name, 0, -3) . '.php');
+    return $found ? $found : $template;
+}
+add_filter('template_include', 'bnwp_twin_page_template');
+
 /** Restrict main-query listings to the current language, where that language has content. */
 function bnwp_filter_main_query($query) {
     if (is_admin() || !$query->is_main_query()) {

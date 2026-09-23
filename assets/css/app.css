@@ -572,6 +572,26 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .layout-aside { grid-template-columns: minmax(0, 1fr) 360px; gap: 3.5rem; align-items: start; }
 }
 
+/* contact channels */
+.channels {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: .5rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.channel {
+  display: flex; align-items: center; gap: .65rem;
+  min-height: 48px; padding: .6rem .8rem;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--ink); text-decoration: none; font-weight: 500;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+              transform var(--dur) var(--ease);
+}
+.channel:hover {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent); transform: translateY(-2px);
+}
+.channel svg { width: 20px; height: 20px; flex: none; fill: currentColor; }
+
 .searchform { display: flex; gap: .5rem; }
 .searchform input[type="search"] {
   flex: 1 1 auto; min-height: 48px; padding: .5rem .9rem;
