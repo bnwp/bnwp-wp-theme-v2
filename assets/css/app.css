@@ -492,8 +492,8 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 /* project logo tile — real project logos, letterboxed on a neutral tile */
 .logo-tile {
   display: grid; place-items: center;
-  width: 64px; height: 64px; flex: none;
-  padding: 8px;
+  width: 72px; height: 72px; flex: none;
+  padding: 9px;
   background: var(--bg-sunken);
   border-radius: 12px;
   transition: background var(--dur) var(--ease);
