@@ -1,52 +1,83 @@
-<?php if (!defined('ABSPATH')) { exit; } ?>
+<?php
+/**
+ * Site footer.
+ */
+if (!defined('ABSPATH')) { exit; }
 
-</main>
+$lang    = bnwp_current_language();
+$persona = get_post_type_archive_link('persona');
+$project = get_post_type_archive_link('project');
+?>
+</main><!-- /#main -->
 
-<footer class="bg-dark text-white mt-auto">
-    <div class="container py-5">
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="site-footer__grid">
 
-        <div class="row align-items-center mb-4 px-2">
-            <div class="col-12 col-md-6 text-center text-md-start mb-3 mb-md-0">
-                <a class="navbar-brand text-white text-decoration-none d-inline-flex flex-column flex-md-row align-items-center gap-2 gap-md-3" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>">
-                    <img
-                        class="bnwp-footer-brand-logo"
-                        src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_Logo_small.png'); ?>"
-                        alt="<?php echo esc_attr(bnwp_site_name()); ?>"
-                        loading="lazy"
-                    >
-
-                    <div class="text-center text-md-start">
-                        <h5 class="mb-1 fw-bold"><?php echo esc_html(bnwp_site_name()); ?></h5>
-                        <span class="d-block fs-6 text-white-50">
-                            <?php bloginfo('description'); ?>
-                        </span>
-                    </div>
+            <div>
+                <a class="brand" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>" rel="home">
+                    <?php bnwp_logo_mark(34); ?>
+                    <span class="brand__name"><?php echo esc_html(bnwp_site_name()); ?></span>
                 </a>
+                <p style="margin-top:1rem;color:var(--ink-soft);max-width:42ch;">
+                    <?php echo esc_html(bnwp_text(
+                        'উইকিমিডিয়ানদের একটি সহযোগিতামূলক উদ্যোগ, যা বাংলা ভাষায় মুক্ত জ্ঞান সম্প্রসারণে কাজ করে।',
+                        'A collaborative initiative of Wikimedians working to expand free knowledge in Bangla.'
+                    )); ?>
+                </p>
             </div>
 
-            <div class="col-12 col-md-6 text-center text-md-end">
-                <a class="btn btn-secondary me-2 mb-2" href="<?php echo esc_url(bnwp_page_url('contact')); ?>">
-                    <?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?>
-                </a>
-
-                <a class="btn btn-secondary mb-2" href="<?php echo esc_url(bnwp_lang_arg(get_post_type_archive_link('persona'))); ?>">
-                    <?php echo esc_html(bnwp_text('সদস্য', 'Members')); ?>
-                </a>
+            <div>
+                <h3><?php echo esc_html(bnwp_text('সাইট', 'Site')); ?></h3>
+                <?php if (has_nav_menu('footer')) : ?>
+                    <?php wp_nav_menu(array('theme_location' => 'footer', 'container' => false, 'menu_class' => '', 'depth' => 1)); ?>
+                <?php else : ?>
+                    <ul>
+                        <li><a href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>"><?php echo esc_html(bnwp_text('পরিচিতি', 'About')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_lang_arg($project ? $project : home_url('/projects/'), $lang)); ?>"><?php echo esc_html(bnwp_text('প্রকল্পসমূহ', 'Projects')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/persona/'), $lang)); ?>"><?php echo esc_html(bnwp_text('সদস্য', 'Members')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_page_url('posts', $lang)); ?>"><?php echo esc_html(bnwp_text('পোস্টসমূহ', 'Posts')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_page_url('contact', $lang)); ?>"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?></a></li>
+                    </ul>
+                <?php endif; ?>
             </div>
+
+            <div>
+                <h3><?php echo esc_html(bnwp_text('উইকিমিডিয়া', 'Wikimedia')); ?></h3>
+                <ul>
+                    <li><a href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect">Meta-Wiki</a></li>
+                    <li><a href="https://bn.wikipedia.org/"><?php echo esc_html(bnwp_text('বাংলা উইকিপিডিয়া', 'Bangla Wikipedia')); ?></a></li>
+                    <li><a href="https://bn.wiktionary.org/"><?php echo esc_html(bnwp_text('বাংলা উইকিঅভিধান', 'Bangla Wiktionary')); ?></a></li>
+                    <li><a href="https://commons.wikimedia.org/"><?php echo esc_html(bnwp_text('উইকিমিডিয়া কমন্স', 'Wikimedia Commons')); ?></a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3><?php echo esc_html(bnwp_text('যুক্ত হোন', 'Connect')); ?></h3>
+                <ul>
+                    <li><a href="<?php echo esc_url(bnwp_page_url('contact', $lang)); ?>"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact us')); ?></a></li>
+                    <li><a href="mailto:connect@bnwp.org">connect@bnwp.org</a></li>
+                </ul>
+            </div>
+
         </div>
 
-        <div class="border-top border-secondary pt-4 text-center">
-            <div class="fs-6 text-white-50">
-                <?php echo esc_html(bnwp_text('এই সাইটের সমস্ত চিত্র ও ভিডিও কন্টেন্ট সিসি বাই-এসএ ৪.০ লাইসেন্সের আওতায় প্রকাশিত যদি না সংশ্লিষ্ট কনটেন্টে পৃথক লাইসেন্সের উল্লেখ থাকে। তবে এই সাইটের সমস্ত পাঠ্য কনটেন্ট মেধাসত্ত্বের অন্তর্ভুক্ত বলে গন্য হবে।', 'Unless otherwise noted, all image and video content on this site is available under CC BY-SA 4.0. All text content remains the intellectual property of the site.')); ?>
-                <br>
-                © <?php echo esc_html(date_i18n('Y')); ?>, <?php echo esc_html(bnwp_text('সিসি বাই-এসএ ৪.০', 'CC BY-SA 4.0')); ?> <?php echo esc_html(bnwp_site_name()); ?>
-            </div>
+        <div class="site-footer__legal">
+            <p><?php
+                printf(
+                    /* translators: %s: current year */
+                    esc_html(bnwp_text('© %s বাংলা উইকিসংযোগ', '© %s Bangla WikiConnect')),
+                    esc_html(bnwp_num(wp_date('Y')))
+                );
+            ?></p>
+            <p><?php echo esc_html(bnwp_text(
+                'লেখা CC BY-SA 4.0 লাইসেন্সে প্রকাশিত।',
+                'Text is available under CC BY-SA 4.0.'
+            )); ?></p>
         </div>
-
     </div>
 </footer>
 
 <?php wp_footer(); ?>
-
 </body>
 </html>

@@ -1,26 +1,90 @@
-<?php get_header(); ?>
-<?php while (have_posts()) : the_post();
-$cover = bnwp_get_meta('_bnwp_cover');
-$img = bnwp_clean_image_url(bnwp_get_meta('_bnwp_img'), bnwp_get_avatar_placeholder());
-$name = bnwp_get_meta('_bnwp_name', get_the_ID(), get_the_title());
-$role = bnwp_get_meta('_bnwp_role');
-$username = bnwp_get_meta('_bnwp_username');
-$email = bnwp_get_meta('_bnwp_email');
-$location = bnwp_get_meta('_bnwp_location');
-$bio = bnwp_get_meta('_bnwp_bio');
+<?php
+/**
+ * Single team member.
+ */
+if (!defined('ABSPATH')) { exit; }
+
+get_header();
+
+while (have_posts()) : the_post();
+    $username = bnwp_get_meta('_bnwp_username');
+    $role     = bnwp_get_meta('_bnwp_role');
+    $location = bnwp_get_meta('_bnwp_location');
+    $email    = bnwp_get_meta('_bnwp_email');
+    $bio      = bnwp_get_meta('_bnwp_bio');
+    $archive  = get_post_type_archive_link('persona');
+    $terms    = get_the_terms(get_the_ID(), 'team');
 ?>
-<div id="project__header" style="background-image:url(<?php echo esc_url($cover); ?>);background-size:cover;background-repeat:no-repeat;background-color:#fff3cd;background-blend-mode:screen;">
-  <div class="container py-5"><div class="d-flex flex-column flex-md-row align-items-center align-items-md-start gap-4">
-    <div class="flex-shrink-0 text-center"><div style="width:160px;height:160px;border-radius:50%;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,.18);"><img width="160" height="160" style="object-fit:cover;width:160px;height:160px;" src="<?php echo esc_url($img); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(bnwp_get_avatar_placeholder()); ?>';" alt="<?php echo esc_attr($name); ?>"></div></div>
-    <div><h1 class="display-4"><?php echo esc_html($name); ?></h1><?php if ($role) : ?><h5 class="fw-bold"><?php echo esc_html($role); ?></h5><?php endif; ?>
-      <h5><?php if ($username) : ?><i class="bi bi-at me-1"></i><a href="https://bn.wikipedia.org/wiki/User:<?php echo rawurlencode($username); ?>"><?php echo esc_html($username); ?></a><?php endif; ?><?php if ($email) : ?> <i class="bi bi-envelope-at ms-2"></i><a class="ms-1" href="mailto:<?php echo esc_attr($email); ?>"><?php echo esc_html($email); ?></a><?php endif; ?><?php if ($location) : ?> <i class="bi bi-geo-alt ms-2"></i> <?php echo esc_html($location); ?><?php endif; ?></h5>
-      <?php if ($bio) : ?><p class="lead my-3"><?php echo esc_html($bio); ?></p><?php endif; ?>
+
+<article>
+    <div class="pagehead pagehead--sunken">
+        <div class="wrap">
+            <nav class="breadcrumb" aria-label="<?php echo esc_attr(bnwp_text('ব্রেডক্রাম্ব', 'Breadcrumb')); ?>">
+                <a href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>"><?php echo esc_html(bnwp_text('প্রচ্ছদ', 'Home')); ?></a>
+                <span>/</span>
+                <a href="<?php echo esc_url(bnwp_lang_arg($archive ? $archive : home_url('/persona/'))); ?>"><?php echo esc_html(bnwp_text('সদস্যবৃন্দ', 'Members')); ?></a>
+            </nav>
+
+            <div style="display:flex;flex-wrap:wrap;gap:1.75rem;align-items:center;">
+                <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
+                    'w' => 320, 'h' => 320, 'alt' => get_the_title(),
+                    'class' => 'person__avatar', 'loading' => 'eager',
+                )); ?>
+                <div>
+                    <h1 style="margin-bottom:.2em;"><?php the_title(); ?></h1>
+                    <div class="meta-row">
+                        <?php if ($username) : ?>
+                            <a href="<?php echo esc_url('https://meta.wikimedia.org/wiki/User:' . rawurlencode($username)); ?>">@<?php echo esc_html($username); ?></a>
+                        <?php endif; ?>
+                        <?php if ($role) : ?><span aria-hidden="true">·</span><span><?php echo esc_html($role); ?></span><?php endif; ?>
+                        <?php if ($location) : ?><span aria-hidden="true">·</span><span><?php echo esc_html($location); ?></span><?php endif; ?>
+                    </div>
+                    <?php if ($terms && !is_wp_error($terms)) : ?>
+                        <p style="margin:.9rem 0 0;display:flex;gap:.5rem;flex-wrap:wrap;">
+                            <?php foreach ($terms as $t) :
+                                $link = get_term_link($t);
+                                if (is_wp_error($link)) { continue; } ?>
+                                <a class="chip" style="text-decoration:none;" href="<?php echo esc_url(bnwp_lang_arg($link)); ?>"><?php echo esc_html($t->name); ?></a>
+                            <?php endforeach; ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div>
-  </div></div>
-</div>
-<div class="container py-5"><?php the_content(); ?></div>
-<div class="container py-5"><h2><?php echo esc_html(bnwp_text('ব্লগ', 'Blogs')); ?></h2><ul>
-<?php if ($username) : $blogs = new WP_Query(array('post_type' => 'post', 'posts_per_page' => 10, 'meta_query' => array(array('key' => '_bnwp_user', 'value' => $username), array('key' => '_bnwp_language', 'value' => bnwp_current_language())))); while ($blogs->have_posts()) : $blogs->the_post(); ?><li><a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a></li><?php endwhile; wp_reset_postdata(); endif; ?>
-</ul></div>
-<?php endwhile; ?>
-<?php get_footer(); ?>
+
+    <div class="section">
+        <div class="wrap layout-aside">
+            <div>
+                <?php if ($bio) : ?>
+                    <p class="hero__lead" style="margin-top:0;"><?php echo esc_html($bio); ?></p>
+                <?php endif; ?>
+                <div class="prose"><?php the_content(); ?></div>
+            </div>
+
+            <aside>
+                <div class="panel">
+                    <h2 class="panel__title"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?></h2>
+                    <dl class="factlist">
+                        <?php if ($username) : ?>
+                            <dt><?php echo esc_html(bnwp_text('উইকি', 'Wiki')); ?></dt>
+                            <dd><a href="<?php echo esc_url('https://meta.wikimedia.org/wiki/User:' . rawurlencode($username)); ?>">@<?php echo esc_html($username); ?></a></dd>
+                        <?php endif; ?>
+                        <?php if ($email) : ?>
+                            <dt><?php echo esc_html(bnwp_text('ইমেইল', 'Email')); ?></dt>
+                            <dd><a href="mailto:<?php echo esc_attr(antispambot($email)); ?>"><?php echo esc_html(antispambot($email)); ?></a></dd>
+                        <?php endif; ?>
+                        <?php if ($location) : ?>
+                            <dt><?php echo esc_html(bnwp_text('অবস্থান', 'Location')); ?></dt>
+                            <dd><?php echo esc_html($location); ?></dd>
+                        <?php endif; ?>
+                    </dl>
+                </div>
+            </aside>
+        </div>
+    </div>
+</article>
+
+<?php
+endwhile;
+get_footer();

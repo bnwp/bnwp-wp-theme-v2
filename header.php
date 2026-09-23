@@ -1,73 +1,69 @@
 <?php
+/**
+ * Site header.
+ */
 if (!defined('ABSPATH')) { exit; }
-?><!DOCTYPE html>
-<html lang="<?php echo esc_attr(bnwp_current_language()); ?>" dir="ltr" data-bs-theme="light">
+?><!doctype html>
+<html <?php language_attributes(); ?> class="no-js">
 <head>
-    <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?php echo esc_attr(get_bloginfo('description')); ?>">
-    <link rel="canonical" href="<?php echo esc_url(bnwp_translation_url(bnwp_current_language())); ?>">
-    <?php wp_head(); ?>
+<meta charset="<?php bloginfo('charset'); ?>">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FAF8F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121310" media="(prefers-color-scheme: dark)">
+<link rel="profile" href="https://gmpg.org/xfn/11">
+<?php wp_head(); ?>
 </head>
-<body <?php body_class('d-flex flex-column min-vh-100'); ?>>
-<?php wp_body_open(); ?>
-<div id="fb-root"></div>
-<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v22.0"></script>
-<header>
-    <nav class="navbar navbar-expand-lg">
-        <div class="container py-1 py-sm-2 border-bottom">
-            <a class="navbar-brand bnwp-header-brand me-4" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>">
-                <img
-                    class="bnwp-header-logo"
-                    src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_Logo_small.png'); ?>"
-                    alt="<?php echo esc_attr(bnwp_site_name()); ?>"
-                    loading="lazy"
-                >
 
-                <span class="bnwp-header-title">
-                    <?php echo esc_html(bnwp_site_name()); ?>
-                </span>
-            </a>
-                        <div class="d-flex row-center" id="accessibilityMenu">
-                <?php bnwp_language_switcher(); ?>
-                    <div id="colorModeToogler">
-                        <button
-                            type="button"
-                            class="btn nav-link px-2"
-                            id="colorModeTooglerBtn"
-                            aria-label="Toggle dark mode"
-                        >
-                            <i id="theme-icon-active" class="bi-sun"></i>
-                        </button>
-                    </div>
-                <div id="LocalNavigationToogleIcon">
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#LocalNavigationMenu" aria-controls="LocalNavigationMenu" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-    <div class="navbar navbar-expand-lg">
-        <div class="container">
-            <div class="collapse navbar-collapse py-2" id="LocalNavigationMenu">
-                <?php get_search_form(); ?>
-                <?php
-                if (has_nav_menu('primary') && bnwp_current_language() === 'bn') {
-                    wp_nav_menu(array(
-                        'theme_location' => 'primary',
-                        'container' => false,
-                        'menu_class' => 'navbar-nav me-auto mb-2 mb-lg-0',
-                        'fallback_cb' => 'bnwp_primary_menu_fallback',
-                        'depth' => 2,
-                    ));
-                } else {
-                    bnwp_primary_menu_fallback();
-                }
-                ?>
-            </div>
-        </div>
+<body <?php body_class('site'); ?>>
+<?php wp_body_open(); ?>
+
+<a class="skip-link" href="#main"><?php echo esc_html(bnwp_text('মূল বিষয়বস্তুতে যান', 'Skip to content')); ?></a>
+
+<header class="site-header">
+    <div class="wrap site-header__bar">
+
+        <a class="brand" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>" rel="home">
+            <?php if (has_custom_logo()) : ?>
+                <?php the_custom_logo(); ?>
+            <?php else : ?>
+                <img class="brand__logo"
+                     src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_Logo_small.png'); ?>"
+                     width="42" height="40"
+                     alt=""
+                     fetchpriority="high"
+                     decoding="async">
+            <?php endif; ?>
+            <span class="brand__name"><?php echo esc_html(bnwp_site_name()); ?></span>
+        </a>
+
+        <nav id="site-nav" class="nav" aria-label="<?php echo esc_attr(bnwp_text('প্রধান মেনু', 'Primary menu')); ?>" hidden>
+            <?php bnwp_primary_nav(); ?>
+        </nav>
+
+        <?php bnwp_language_switcher(); ?>
+
+        <button type="button"
+                class="icon-btn"
+                data-theme-toggle
+                aria-pressed="false"
+                aria-label="<?php echo esc_attr(bnwp_text('আলো/অন্ধকার মোড বদলান', 'Toggle dark mode')); ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5Z"/>
+            </svg>
+        </button>
+
+        <button type="button"
+                class="icon-btn nav-toggle"
+                data-nav-toggle
+                aria-expanded="false"
+                aria-controls="site-nav"
+                aria-label="<?php echo esc_attr(bnwp_text('মেনু', 'Menu')); ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+        </button>
+
     </div>
-    <div class="border-bottom"></div>
 </header>
-<main class="full-height flex-grow-1">
+
+<main id="main" class="site__main">

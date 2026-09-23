@@ -1,41 +1,85 @@
-<?php get_header(); ?>
-<?php while (have_posts()) : the_post(); ?>
-<article id="article" itemscope itemtype="https://schema.org/Article">
-  <div id="articleSchema" class="bg-body-tertiary border-bottom">
-    <div class="container py-5">
-      <h3 id="articleTitle" itemprop="headline"><?php the_title(); ?></h3>
-      <?php $user = bnwp_get_meta('_bnwp_user'); if ($user) : ?>
-        <div id="articleAuthor" itemprop="author"><i class="bi bi-person-fill-check pe-1"></i><?php echo esc_html($user); ?></div>
-      <?php endif; ?>
-      <span id="articleTags" class="d-block"><?php the_tags('<i class="bi bi-tag-fill pe-1"></i>', ' ▪ ', ''); ?></span>
-      <span id="articleReadingTime" class="fs-6"><i class="bi bi-alarm-fill pe-2"></i><?php echo esc_html(bnwp_text('পড়ার সময়:', 'Reading time:')); ?> <?php echo esc_html(bnwp_reading_time()); ?> <?php echo esc_html(bnwp_text('মিনিট', 'min')); ?></span>
-      <span id="articlePublicationDate" class="fs-6 ms-3"><i class="bi bi-calendar-week-fill pe-2"></i><?php echo esc_html(bnwp_text('প্রকাশ:', 'Published:')); ?> <?php echo esc_html(bnwp_post_date()); ?></span>
-    </div>
-  </div>
-  <div class="container">
-    <div id="articleGrid" class="row g-5 my-1">
-      <div id="articleContent" class="col-md-8 text-justify">
-        <div id="articleBody" itemprop="articleBody"><?php the_content(); ?></div>
-        <div id="articleShare" class="border-top border-bottom py-2">
-          <label class="me-2"><?php echo esc_html(bnwp_text('শেয়ার করুন:', 'Share:')); ?></label>
-          <a class="me-2" href="https://www.facebook.com/sharer.php?u=<?php echo urlencode(get_permalink()); ?>" rel="nofollow noopener noreferrer" target="_blank" title="Facebook Share"><i class="bi-facebook"></i></a>
-          <a class="me-2" href="https://twitter.com/intent/tweet?url=<?php echo urlencode(get_permalink()); ?>" rel="nofollow noopener noreferrer" target="_blank" title="Tweet This"><i class="bi-twitter"></i></a>
-          <a class="me-2" href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode(get_permalink()); ?>" rel="nofollow noopener noreferrer" target="_blank" title="Linkedin Share"><i class="bi-linkedin"></i></a>
+<?php
+/**
+ * Single post.
+ */
+if (!defined('ABSPATH')) { exit; }
+
+get_header();
+
+while (have_posts()) : the_post();
+    $author_wiki = bnwp_get_meta('_bnwp_user');
+?>
+
+<article>
+    <div class="pagehead pagehead--sunken">
+        <div class="wrap wrap--narrow">
+            <nav class="breadcrumb" aria-label="<?php echo esc_attr(bnwp_text('ব্রেডক্রাম্ব', 'Breadcrumb')); ?>">
+                <a href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>"><?php echo esc_html(bnwp_text('প্রচ্ছদ', 'Home')); ?></a>
+                <span>/</span>
+                <a href="<?php echo esc_url(bnwp_page_url('posts')); ?>"><?php echo esc_html(bnwp_text('পোস্টসমূহ', 'Posts')); ?></a>
+            </nav>
+
+            <h1><?php the_title(); ?></h1>
+
+            <div class="meta-row">
+                <time datetime="<?php echo esc_attr(bnwp_iso_date()); ?>"><?php echo esc_html(bnwp_post_date()); ?></time>
+                <span aria-hidden="true">·</span>
+                <span><?php echo esc_html(bnwp_reading_time()); ?></span>
+                <?php if ($author_wiki) : ?>
+                    <span aria-hidden="true">·</span>
+                    <span><?php echo esc_html(bnwp_text('লেখক', 'By')); ?>
+                        <a href="<?php echo esc_url('https://meta.wikimedia.org/wiki/User:' . rawurlencode($author_wiki)); ?>">@<?php echo esc_html($author_wiki); ?></a>
+                    </span>
+                <?php endif; ?>
+                <?php $cats = get_the_category_list(', '); if ($cats) : ?>
+                    <span aria-hidden="true">·</span><span><?php echo wp_kses_post($cats); ?></span>
+                <?php endif; ?>
+            </div>
         </div>
-      </div>
-      <aside id="articleSidebar" class="col-md-4">
-        <div class="position-sticky" style="top:2rem;">
-          <h4><?php echo esc_html(bnwp_text('সাম্প্রতিক পোস্ট', 'Recent posts')); ?></h4>
-          <ul class="list-unstyled">
-            <?php $recent = new WP_Query(array('post_type' => 'post', 'posts_per_page' => 3, 'post__not_in' => array(get_the_ID()), 'meta_key' => '_bnwp_language', 'meta_value' => bnwp_current_language())); while ($recent->have_posts()) : $recent->the_post(); ?>
-              <li class="py-3 border-top"><a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><h5 class="mb-0"><?php the_title(); ?></h5><span class="d-block fs-6 text-muted"><?php echo esc_html(bnwp_post_date()); ?></span></a></li>
-            <?php endwhile; wp_reset_postdata(); ?>
-          </ul>
-          <h4><?php echo esc_html(bnwp_text('ট্যাগ', 'Tags')); ?></h4><?php wp_tag_cloud(array('smallest' => 10, 'largest' => 16, 'unit' => 'px')); ?>
-        </div>
-      </aside>
     </div>
-  </div>
+
+    <div class="section">
+        <div class="wrap wrap--narrow">
+            <?php if (has_post_thumbnail()) : ?>
+                <figure style="margin:0 0 2rem;">
+                    <?php the_post_thumbnail('large', array('style' => 'border-radius:var(--radius);width:100%;height:auto;', 'loading' => 'eager')); ?>
+                </figure>
+            <?php endif; ?>
+
+            <div class="prose">
+                <?php the_content(); ?>
+            </div>
+
+            <?php
+            wp_link_pages(array(
+                'before' => '<nav class="pagination"><div class="nav-links">',
+                'after'  => '</div></nav>',
+            ));
+
+            $tags = get_the_tag_list('<p style="margin-top:2rem;display:flex;gap:.5rem;flex-wrap:wrap;">', ' ', '</p>');
+            if ($tags) {
+                echo wp_kses_post($tags);
+            }
+            ?>
+
+            <nav class="pagination" aria-label="<?php echo esc_attr(bnwp_text('লেখা নেভিগেশন', 'Post navigation')); ?>">
+                <div class="nav-links">
+                    <?php
+                    previous_post_link('%link', '<span class="page-numbers">&larr; %title</span>');
+                    next_post_link('%link', '<span class="page-numbers">%title &rarr;</span>');
+                    ?>
+                </div>
+            </nav>
+
+            <?php
+            if (comments_open() || get_comments_number()) {
+                comments_template();
+            }
+            ?>
+        </div>
+    </div>
 </article>
-<?php endwhile; ?>
-<?php get_footer(); ?>
+
+<?php
+endwhile;
+get_footer();

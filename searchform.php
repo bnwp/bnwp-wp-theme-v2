@@ -1,5 +1,18 @@
-<form role="search" method="get" class="d-flex order-sm-1" action="<?php echo esc_url(home_url('/')); ?>">
-    <?php if (bnwp_current_language() === 'en') : ?><input type="hidden" name="lang" value="en"><?php endif; ?>
-    <input autocomplete="off" class="form-control" name="s" placeholder="<?php echo esc_attr(bnwp_text('অনুসন্ধান', 'Search')); ?>" type="search" value="<?php echo esc_attr(get_search_query()); ?>" aria-label="<?php echo esc_attr(bnwp_text('অনুসন্ধান', 'Search')); ?>">
-    <button class="input-group-text btn btn-primary" aria-label="SearchButton" type="submit"><i class="bi-search"></i></button>
+<?php
+/**
+ * Search form.
+ */
+if (!defined('ABSPATH')) { exit; }
+
+$id = 'search-' . wp_unique_id();
+?>
+<form class="searchform" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
+    <label class="screen-reader-text" for="<?php echo esc_attr($id); ?>"><?php echo esc_html(bnwp_text('খুঁজুন', 'Search')); ?></label>
+    <input type="search" id="<?php echo esc_attr($id); ?>" name="s"
+           value="<?php echo esc_attr(get_search_query()); ?>"
+           placeholder="<?php echo esc_attr(bnwp_text('খুঁজুন…', 'Search…')); ?>">
+    <?php if (bnwp_is_en()) : ?>
+        <input type="hidden" name="lang" value="en">
+    <?php endif; ?>
+    <button class="btn btn--primary" type="submit"><?php echo esc_html(bnwp_text('খুঁজুন', 'Search')); ?></button>
 </form>

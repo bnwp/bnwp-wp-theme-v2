@@ -1,41 +1,70 @@
-<?php get_header(); ?>
+<?php
+/**
+ * Front page.
+ */
+if (!defined('ABSPATH')) { exit; }
 
-<section class="container my-5">
-    <div class="row align-items-center py-5 px-3 px-md-0">
-        <div class="col-lg-7">
-            <h1 class="display-4 text-body-emphasis"><?php echo esc_html(bnwp_text('বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ যা...', 'Bangla WikiConnect is a collaborative initiative that...')); ?></h1>
-            <p class="lead"><?php echo esc_html(bnwp_text('... বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর দৃষ্টি নিবদ্ধ করে। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে, আমরা উইকিপিডিয়া এবং এর সহযোগী প্রকল্প যেমন উইকিকোট, উইকিভ্রমণ, উইকিবই এবং উইকশনারিতে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করার লক্ষ্য রাখি।', '...focuses on growing and expanding Wikipedia content in Bangla. Through engaging competitions, edit-a-thons, and training programs, we aim to create high-quality, inclusive content across Wikipedia and sister projects such as Wikiquote, Wikivoyage, Wikibooks, and Wiktionary.')); ?></p>
-            <div class="front-hero-buttons">
-                <a href="<?php echo esc_url(bnwp_page_url('about')); ?>" class="btn btn-primary fw-bold">
+get_header();
+
+$lang    = bnwp_current_language();
+$persona = get_post_type_archive_link('persona');
+$project = get_post_type_archive_link('project');
+
+$stats = array(
+    array('text' => bnwp_text('১৬ লক্ষ+', '1.6M+'), 'label' => bnwp_text('শব্দ যোগ হয়েছে', 'words added')),
+    array('count' => 2000, 'suffix' => '+', 'label' => bnwp_text('নিবন্ধ তৈরি', 'articles created')),
+    array('count' => 100,  'suffix' => '+', 'label' => bnwp_text('চিত্র আপলোড', 'images uploaded')),
+    array('count' => 20,   'suffix' => '+', 'label' => bnwp_text('স্বেচ্ছাসেবী আয়োজক', 'volunteer organisers')),
+    array('count' => 2,    'suffix' => '',  'label' => bnwp_text('কর্মশালা', 'workshops')),
+    array('count' => 2,    'suffix' => '',  'label' => bnwp_text('টিউটোরিয়াল', 'tutorials')),
+);
+?>
+
+<section class="hero">
+    <div class="hero__orbit" aria-hidden="true">
+        <div class="hero__orbit-spin"><?php bnwp_logo_mark(560); ?></div>
+    </div>
+
+    <div class="wrap hero__inner">
+        <div>
+            <p class="eyebrow reveal"><?php echo esc_html(bnwp_text('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh')); ?></p>
+
+            <h1 class="reveal"><?php echo esc_html(bnwp_text(
+                'বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ',
+                'Bangla WikiConnect is a collaborative initiative'
+            )); ?></h1>
+
+            <p class="hero__lead reveal"><?php echo esc_html(bnwp_text(
+                'বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর আমরা দৃষ্টি নিবদ্ধ করি। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে উইকিপিডিয়া ও এর সহযোগী প্রকল্প — উইকিউক্তি, উইকিভ্রমণ, উইকিবই ও উইকিঅভিধানে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করাই আমাদের লক্ষ্য।',
+                'We focus on growing and expanding Wikipedia content in Bangla. Through contests, edit-a-thons and training programmes, we aim to build high-quality, inclusive content across Wikipedia and its sister projects — Wikiquote, Wikivoyage, Wikibooks and Wiktionary.'
+            )); ?></p>
+
+            <div class="hero__actions reveal">
+                <a class="btn btn--primary" href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>">
                     <?php echo esc_html(bnwp_text('আরও জানুন', 'Learn more')); ?>
                 </a>
-
-                <a href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect" class="btn btn-secondary">
-                    <?php echo esc_html(bnwp_text("মেটা'উইকিতে পড়ুন", 'Read on Meta-Wiki')); ?>
+                <a class="btn btn--ghost" href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect">
+                    <?php echo esc_html(bnwp_text('মেটা’উইকিতে পড়ুন', 'Read on Meta-Wiki')); ?>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
                 </a>
             </div>
         </div>
-        <div class="col-lg-4 offset-lg-1 p-0">
-            <img class="rounded-lg-3" src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_LOGO.png'); ?>" alt="Bangla WikiConnect" width="720">
-        </div>
-    </div>
-</section>
 
-<section class="bg-green-5 position-relative overflow-hidden" id="homeHero">
-    <div class="container py-10 py-5">
-        <div class="carousel slide" data-bs-ride="carousel" id="QuoteCarousel">
-            <?php $quotes = bnwp_current_language() === 'en'
-                ? array('✨ 1.6M+ words added so far!', '📝 2,000+ articles!', '🖼️ 100+ images uploaded!', '👥 20+ organizers!', '🛠️ 2 workshops', '📘 2 tutorials')
-                : array('✨ এখন পর্যন্ত ১৬ লক্ষ+ শব্দ যোগ!', '📝 ২০০০+ নিবন্ধ!', '🖼️ ১০০+ চিত্র আপলোড!', '👥 ২০+ আয়োজক!', '🛠️ ২ টি কর্মশালা', '📘 ২ টি টিউটোরিয়াল'); ?>
-            <ul class="carousel-indicators">
-                <?php foreach ($quotes as $i => $quote) : ?>
-                    <li data-bs-slide-to="<?php echo esc_attr($i); ?>" data-bs-target="#QuoteCarousel" class="<?php echo $i === 0 ? 'active' : ''; ?>"></li>
-                <?php endforeach; ?>
-            </ul>
-            <div class="carousel-inner">
-                <?php foreach ($quotes as $i => $quote) : ?>
-                    <div class="carousel-item<?php echo $i === 0 ? ' active' : ''; ?>">
-                        <figure class="text-center"><blockquote class="blockquote fs-3 fw-bold"><?php echo esc_html($quote); ?></blockquote></figure>
+        <div class="stats reveal">
+            <p class="panel__title"><?php echo esc_html(bnwp_text('এখন পর্যন্ত আমাদের অবদান', 'Our impact so far')); ?></p>
+            <div class="stats__grid">
+                <?php foreach ($stats as $s) : ?>
+                    <div class="stat">
+                        <?php if (isset($s['count'])) : ?>
+                            <div class="stat__value tabular"
+                                 data-count="<?php echo esc_attr($s['count']); ?>"
+                                 data-suffix="<?php echo esc_attr($s['suffix']); ?>"><?php
+                                echo esc_html(bnwp_num(number_format_i18n($s['count'])) . $s['suffix']);
+                            ?></div>
+                        <?php else : ?>
+                            <div class="stat__value"><?php echo esc_html($s['text']); ?></div>
+                        <?php endif; ?>
+                        <p class="stat__label"><?php echo esc_html($s['label']); ?></p>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -43,66 +72,173 @@
     </div>
 </section>
 
-<section class="container py-5">
-    <h2 class="text-center mb-5 fw-bold"><?php echo esc_html(bnwp_text('আমাদের প্রকল্পসমূহ', 'Our Projects')); ?></h2>
-    <div class="row row-cols-1 row-cols-sm-3 g-4">
-        <?php
-        $projects = new WP_Query(array('post_type' => 'project', 'posts_per_page' => 6, 'meta_key' => '_bnwp_language', 'meta_value' => bnwp_current_language()));
-        if (!$projects->have_posts()) {
-            echo '<p>' . esc_html(bnwp_text('কোনো প্রকল্প পাওয়া যায়নি।', 'No projects found.')) . '</p>';
-        }
-        while ($projects->have_posts()) : $projects->the_post();
-            $logo = bnwp_get_meta('_bnwp_logo');
-            $lead = bnwp_get_meta('_bnwp_lead');
-        ?>
-            <div class="col">
-                <?php if ($logo) : ?><div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-4"><img src="<?php echo esc_url($logo); ?>" alt="" style="width:auto;height:100px"></div><?php endif; ?>
-                <h4 class="fw-semibold mb-0 text-body-emphasis"><?php the_title(); ?></h4>
-                <a class="py-3 d-block" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php echo esc_html(bnwp_text('বিস্তারিত দেখুন', 'View details')); ?> <i class="bi bi-arrow-right-circle-fill"></i></a>
-                <?php if ($lead) : ?><p class="text-body-secondary"><?php echo esc_html(wp_trim_words($lead, 22)); ?></p><?php endif; ?>
-            </div>
-        <?php endwhile; wp_reset_postdata(); ?>
-    </div>
-</section>
 
-<section class="container" id="TeamMembers">
-    <h3 class="section__title cots__title text-center my-3"><?php echo esc_html(bnwp_text('মূল দল', 'Core Team')); ?></h3>
-    <div class="row">
-        <?php
-        $people = new WP_Query(array(
-            'post_type' => 'persona',
-            'posts_per_page' => 12,
-            'meta_key' => '_bnwp_language',
-            'meta_value' => bnwp_current_language(),
-            'tax_query' => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot')),
-        ));
-        if (!$people->have_posts()) {
-            echo '<p>' . esc_html(bnwp_text('কোনো সদস্য পাওয়া যায়নি।', 'No members found.')) . '</p>';
-        }
-        while ($people->have_posts()) : $people->the_post();
-            $img = bnwp_clean_image_url(bnwp_get_meta('_bnwp_img'), bnwp_get_avatar_placeholder());
-            $username = bnwp_get_meta('_bnwp_username');
-        ?>
-            <div class="col-lg-4 my-3 text-center fw-bold">
-                <div class="p-3 rounded-3 border bnwp-member-card">
-                    <div class="cots__avatar bnwp-member-avatar m-auto mb-3">
-                        <img width="100%" height="100%" style="object-fit:cover" class="rounded-circle" src="<?php echo esc_url($img); ?>" onerror="this.onerror=null;this.src='<?php echo esc_url(bnwp_get_avatar_placeholder()); ?>';" alt="<?php the_title_attribute(); ?>">
-                    </div>
-                    <h3 class="cots__name fw-normal"><?php the_title(); ?></h3>
-                    <?php if ($username) : ?><small class="d-block bnwp-member-username">@<?php echo esc_html($username); ?></small><?php endif; ?>
-                    <p class="mb-0 mt-auto"><a class="py-3 d-block bnwp-member-link" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php echo esc_html(bnwp_text('বিস্তারিত দেখুন', 'View details')); ?> <i class="bi bi-arrow-right-circle-fill"></i></a></p>
+<?php
+$projects = new WP_Query(array(
+    'post_type'      => 'project',
+    'posts_per_page' => 6,
+    'no_found_rows'  => true,
+    'meta_query'     => array(
+        'relation' => 'OR',
+        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
+        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
+    ),
+));
+if ($projects->have_posts()) : ?>
+<section class="section section--sunken">
+    <div class="wrap">
+        <div class="section__head">
+            <div>
+                <h2><?php echo esc_html(bnwp_text('আমাদের প্রকল্পসমূহ', 'Our projects')); ?></h2>
+                <p><?php echo esc_html(bnwp_text('চলমান ও সদ্য সমাপ্ত প্রতিযোগিতা এবং কর্মসূচি', 'Ongoing and recently completed contests and programmes')); ?></p>
+            </div>
+            <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($project ? $project : home_url('/projects/'), $lang)); ?>">
+                <?php echo esc_html(bnwp_text('সব প্রকল্প দেখুন', 'All projects')); ?>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+        </div>
+
+        <div class="grid grid--3" data-stagger>
+            <?php while ($projects->have_posts()) : $projects->the_post();
+                $logo = bnwp_get_meta('_bnwp_logo');
+                $lead = bnwp_get_meta('_bnwp_lead');
+            ?>
+            <article class="card reveal">
+                <div class="card__top">
+                    <?php if ($logo) : ?>
+                        <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '')); ?></span>
+                    <?php endif; ?>
                 </div>
-            </div>
-        <?php endwhile; wp_reset_postdata(); ?>
+                <h3 class="card__title">
+                    <a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a>
+                </h3>
+                <?php if ($lead) : ?>
+                    <p class="card__text"><?php echo esc_html(wp_trim_words($lead, 24, '…')); ?></p>
+                <?php endif; ?>
+                <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>" tabindex="-1" aria-hidden="true">
+                    <?php echo esc_html(bnwp_text('বিস্তারিত দেখুন', 'View details')); ?>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+                </a>
+            </article>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </div>
     </div>
 </section>
+<?php endif; ?>
 
-<section class="container my-5 text-center py-5">
-    <h2 class="my-5"><?php echo esc_html(bnwp_text('আমাদের অংশীদার', 'Our Partners')); ?></h2>
-    <div class="d-flex flex-wrap" style="justify-content:center;gap:1rem">
-        <div class="text-secondary bg-light p-4"><img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Wikimedia_Foundation_logo_-_vertical.png'); ?>" alt="Wikimedia Foundation" style="height:80px;width:auto"></div>
-        <div class="text-secondary bg-light p-4"><img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/WikiNandini_text_logo_2024.png'); ?>" alt="WikiNandini" style="height:80px;width:auto"></div>
-        <div class="text-secondary bg-light p-4"><img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Wikimedia_Bangladesh_logo.png'); ?>" alt="Wikimedia Bangladesh" style="height:80px;width:auto"></div>
+
+<?php
+$recent = new WP_Query(array(
+    'post_type'      => 'post',
+    'posts_per_page' => 4,
+    'no_found_rows'  => true,
+    'meta_query'     => array(
+        'relation' => 'OR',
+        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
+        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
+    ),
+));
+if ($recent->have_posts()) : ?>
+<section class="section">
+    <div class="wrap">
+        <div class="section__head">
+            <h2><?php echo esc_html(bnwp_text('বার্তাকক্ষ', 'Newsroom')); ?></h2>
+            <a class="arrow-link" href="<?php echo esc_url(bnwp_page_url('posts', $lang)); ?>">
+                <?php echo esc_html(bnwp_text('সব পোস্ট', 'All posts')); ?>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+        </div>
+
+        <ul class="postlist reveal">
+            <?php while ($recent->have_posts()) : $recent->the_post(); ?>
+            <li class="postlist__item">
+                <a class="postlist__link" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>">
+                    <time class="postlist__meta" datetime="<?php echo esc_attr(bnwp_iso_date()); ?>"><?php echo esc_html(bnwp_post_date()); ?></time>
+                    <span>
+                        <span class="postlist__title"><?php the_title(); ?></span>
+                        <?php $ex = get_the_excerpt(); if ($ex) : ?>
+                            <span class="postlist__excerpt"><?php echo esc_html(wp_trim_words($ex, 20, '…')); ?></span>
+                        <?php endif; ?>
+                    </span>
+                    <span class="postlist__meta"><?php echo esc_html(bnwp_reading_time()); ?></span>
+                </a>
+            </li>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </ul>
+    </div>
+</section>
+<?php endif; ?>
+
+
+<?php
+$people = new WP_Query(array(
+    'post_type'      => 'persona',
+    'posts_per_page' => 8,
+    'no_found_rows'  => true,
+    'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot')),
+    'meta_query'     => array(
+        'relation' => 'OR',
+        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
+        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
+    ),
+));
+if ($people->have_posts()) : ?>
+<section class="section section--sunken">
+    <div class="wrap">
+        <div class="section__head">
+            <div>
+                <h2><?php echo esc_html(bnwp_text('মূল দল', 'Core team')); ?></h2>
+                <p><?php echo esc_html(bnwp_text('যাঁরা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative')); ?></p>
+            </div>
+            <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/persona/'), $lang)); ?>">
+                <?php echo esc_html(bnwp_text('সব সদস্য', 'All members')); ?>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+        </div>
+
+        <div class="grid grid--4" data-stagger>
+            <?php while ($people->have_posts()) : $people->the_post();
+                $username = bnwp_get_meta('_bnwp_username');
+                $role     = bnwp_get_meta('_bnwp_role');
+            ?>
+            <a class="person reveal" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>">
+                <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
+                    'w' => 176, 'h' => 176, 'class' => 'person__avatar',
+                    'alt' => get_the_title(),
+                )); ?>
+                <span class="person__name"><?php the_title(); ?></span>
+                <?php if ($username) : ?><span class="person__handle">@<?php echo esc_html($username); ?></span><?php endif; ?>
+                <?php if ($role) : ?><span class="person__role"><?php echo esc_html($role); ?></span><?php endif; ?>
+            </a>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
+
+
+<section class="section">
+    <div class="wrap" style="text-align:center;">
+        <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_text('আমাদের অংশীদার', 'Our partners')); ?></h2>
+        <div class="partners reveal" style="margin-top:2rem;">
+            <?php
+            $partners = array(
+                array('Wikimedia_Foundation_logo_-_vertical.png', 'Wikimedia Foundation', 614, 459),
+                array('WikiNandini_text_logo_2024.png',           'WikiNandini',          1042, 240),
+                array('Wikimedia_Bangladesh_logo.png',            'Wikimedia Bangladesh',  500, 512),
+                array('Wiki_Loves_Women_South_Asia.png',          'Wiki Loves Women South Asia', 695, 353),
+            );
+            foreach ($partners as $p) :
+                $h = 72;
+                $w = (int) round($h * ($p[2] / $p[3]));
+            ?>
+                <div class="partner">
+                    <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/' . $p[0]); ?>"
+                         width="<?php echo esc_attr($w); ?>" height="<?php echo esc_attr($h); ?>"
+                         alt="<?php echo esc_attr($p[1]); ?>" loading="lazy" decoding="async">
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 </section>
 

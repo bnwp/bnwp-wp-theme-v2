@@ -1,16 +1,38 @@
-<?php get_header(); ?>
-<?php while (have_posts()) : the_post(); ?>
-<section>
-  <div class="bg-primary py-4">
-    <div class="container d-lg-flex justify-content-between py-5">
-      <div class="order-lg-1 pe-lg-4 text-center text-lg-start">
-        <h1 class="h3 mb-0 text-light"><?php the_title(); ?></h1>
-      </div>
+<?php
+/**
+ * Static page.
+ */
+if (!defined('ABSPATH')) { exit; }
+
+get_header();
+
+while (have_posts()) : the_post(); ?>
+
+<article>
+    <div class="pagehead pagehead--sunken">
+        <div class="wrap wrap--narrow">
+            <h1><?php the_title(); ?></h1>
+        </div>
     </div>
-  </div>
-  <div class="container my-5">
-    <?php the_content(); ?>
-  </div>
-</section>
-<?php endwhile; ?>
-<?php get_footer(); ?>
+
+    <div class="section">
+        <div class="wrap wrap--narrow">
+            <?php if (has_post_thumbnail()) : ?>
+                <figure style="margin:0 0 2rem;">
+                    <?php the_post_thumbnail('large', array('style' => 'border-radius:var(--radius);width:100%;height:auto;')); ?>
+                </figure>
+            <?php endif; ?>
+
+            <div class="prose"><?php the_content(); ?></div>
+
+            <?php wp_link_pages(array(
+                'before' => '<nav class="pagination"><div class="nav-links">',
+                'after'  => '</div></nav>',
+            )); ?>
+        </div>
+    </div>
+</article>
+
+<?php
+endwhile;
+get_footer();
