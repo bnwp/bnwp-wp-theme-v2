@@ -62,7 +62,6 @@ $q = new WP_Query($args);
                             'mid_size'  => 1,
                             'prev_text' => bnwp_text('পূর্ববর্তী', 'Previous'),
                             'next_text' => bnwp_text('পরবর্তী', 'Next'),
-                            'add_args'  => bnwp_is_en() ? array('lang' => 'en') : false,
                         ));
                         ?>
                     </div>

@@ -70,6 +70,12 @@ function bnwp_current_language() {
         return $cached;
     }
 
+    // set by bnwp_parse_language_prefix() from the /en/ path segment
+    if (!empty($GLOBALS['bnwp_path_lang'])) {
+        return $cached = $GLOBALS['bnwp_path_lang'];
+    }
+
+    // legacy ?lang=en — still honoured so old links render, then redirected
     if (isset($_GET['lang'])) {
         $requested = sanitize_key(wp_unslash($_GET['lang']));
         if (in_array($requested, bnwp_langs(), true)) {
@@ -116,10 +122,140 @@ function bnwp_document_title_parts($title) {
 add_filter('document_title_parts', 'bnwp_document_title_parts');
 
 /** Append/strip ?lang=en on a URL. */
-function bnwp_lang_arg($url, $lang = null) {
-    $lang = $lang ? $lang : bnwp_current_language();
-    return $lang === 'en' ? add_query_arg('lang', 'en', $url) : remove_query_arg('lang', $url);
+/** The subdirectory WordPress is installed in: "/intrepid", or "" at the root. */
+function bnwp_home_path() {
+    static $path = null;
+    if ($path === null) {
+        $parts = wp_parse_url(home_url('/'));
+        $path  = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
+    }
+    return $path;
 }
+
+/**
+ * Put a URL into a language.
+ *
+ * English lives under /en/ rather than ?lang=en. Google's documentation lists
+ * URL parameters as "not recommended" for multilingual sites, and a path
+ * segment is also what readers expect to be able to share. Any existing /en/
+ * prefix and any legacy ?lang= are stripped first, so this is safe to apply
+ * more than once to the same URL.
+ */
+function bnwp_lang_arg($url, $lang = null) {
+    $lang  = $lang ? $lang : bnwp_current_language();
+    $parts = wp_parse_url($url);
+
+    if (!is_array($parts)) {
+        return $url;
+    }
+
+    $origin = isset($parts['host'])
+        ? (isset($parts['scheme']) ? $parts['scheme'] : 'https') . '://' . $parts['host']
+          . (isset($parts['port']) ? ':' . $parts['port'] : '')
+        : '';
+    $fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+
+    $query = '';
+    if (!empty($parts['query'])) {
+        parse_str($parts['query'], $q);
+        unset($q['lang']);                       // drop the legacy parameter
+        $query = $q ? '?' . http_build_query($q) : '';
+    }
+
+    $base = bnwp_home_path();
+    $rel  = isset($parts['path']) ? $parts['path'] : '/';
+    if ($base !== '' && strpos($rel, $base) === 0) {
+        $rel = substr($rel, strlen($base));
+    }
+    $rel = '/' . ltrim($rel, '/');
+
+    if ($rel === '/en' || $rel === '/en/') {
+        $rel = '/';
+    } elseif (strpos($rel, '/en/') === 0) {
+        $rel = substr($rel, 3);
+    }
+
+    if ($lang === 'en') {
+        $rel = '/en' . ($rel === '/' ? '/' : $rel);
+    }
+
+    return $origin . $base . $rel . $query . $fragment;
+}
+
+/**
+ * Read the language out of the path before WordPress parses the request, then
+ * hand WordPress the URL without it. Nothing else in the theme has to know
+ * that /en/ exists — routing, canonical redirects and templates all see the
+ * ordinary address.
+ */
+function bnwp_parse_language_prefix($do_parse, $wp = null, $extra = null) {
+    $uri  = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
+    $path = strtok($uri, '?');
+    $qs   = strpos($uri, '?') !== false ? substr($uri, strpos($uri, '?')) : '';
+
+    $base = bnwp_home_path();
+    $rel  = $path;
+    if ($base !== '' && strpos($rel, $base) === 0) {
+        $rel = substr($rel, strlen($base));
+    }
+    $rel = '/' . ltrim($rel, '/');
+
+    if ($rel === '/en' || $rel === '/en/') {
+        $GLOBALS['bnwp_path_lang'] = 'en';
+        $_SERVER['REQUEST_URI'] = ($base === '' ? '/' : $base . '/') . $qs;
+    } elseif (strpos($rel, '/en/') === 0) {
+        $GLOBALS['bnwp_path_lang'] = 'en';
+        $_SERVER['REQUEST_URI'] = $base . substr($rel, 3) . $qs;
+    }
+
+    return $do_parse;
+}
+add_filter('do_parse_request', 'bnwp_parse_language_prefix', 1, 3);
+
+/** Every generated link inherits the current language. */
+function bnwp_localise_link($url) {
+    if (is_admin() || !bnwp_is_en()) {
+        return $url;
+    }
+    return bnwp_lang_arg($url, 'en');
+}
+foreach (array(
+    'post_link', 'page_link', 'post_type_link', 'attachment_link',
+    'term_link', 'post_type_archive_link', 'get_pagenum_link',
+    'year_link', 'month_link', 'day_link',
+) as $bnwp_link_filter) {
+    add_filter($bnwp_link_filter, 'bnwp_localise_link', 20);
+}
+unset($bnwp_link_filter);
+
+/** Send the old ?lang=en addresses to their /en/ equivalent, once. */
+function bnwp_redirect_legacy_lang() {
+    if (is_admin() || wp_doing_ajax() || !isset($_GET['lang'])) {
+        return;
+    }
+
+    $lang = sanitize_key(wp_unslash($_GET['lang']));
+    if (!in_array($lang, bnwp_langs(), true)) {
+        return;
+    }
+
+    // REQUEST_URI already carries any subdirectory, so take only scheme and
+    // host from home_url() rather than concatenating two paths.
+    $home   = wp_parse_url(home_url('/'));
+    $origin = (isset($home['scheme']) ? $home['scheme'] : 'https') . '://'
+            . (isset($home['host']) ? $home['host'] : '')
+            . (isset($home['port']) ? ':' . $home['port'] : '');
+
+    $uri     = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
+    $current = $origin . $uri;
+    $target  = bnwp_lang_arg($current, $lang);
+
+    if ($target && $target !== $current) {
+        wp_safe_redirect($target, 301);
+        exit;
+    }
+}
+add_action('template_redirect', 'bnwp_redirect_legacy_lang', 1);
 
 /** A page by slug, in the requested language. One page serves both. */
 function bnwp_page_url($base_slug, $lang = null) {
@@ -284,7 +420,7 @@ function bnwp_nav_link_attr($atts, $item, $args, $depth) {
     }
 
     if (bnwp_is_en() && strpos($href, home_url()) === 0) {
-        $href = add_query_arg('lang', 'en', $href);
+        $href = bnwp_lang_arg($href, 'en');
     }
 
     $atts['href'] = $href;
