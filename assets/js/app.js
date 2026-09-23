@@ -116,18 +116,48 @@
     return String(n).replace(/[0-9]/g, function (d) { return digits[+d]; });
   }
 
+  /* Mirrors bnwp_number_scale() in PHP. English uses the short scale,
+     Bengali the South Asian one — a lakh is 10^5, so they cannot share a
+     divisor. Returns [mantissa, unit]. */
+  function scale(n) {
+    if ((window.BNWP && window.BNWP.lang) === 'en') {
+      if (n >= 1e9) return [n / 1e9, 'B'];
+      if (n >= 1e6) return [n / 1e6, 'M'];
+      if (n >= 1e4) return [n / 1e3, 'K'];
+    } else {
+      if (n >= 1e7) return [n / 1e7, ' কোটি'];
+      if (n >= 1e5) return [n / 1e5, ' লক্ষ'];
+      if (n >= 1e4) return [n / 1e3, ' হাজার'];
+    }
+    return [n, ''];
+  }
+
+  function formatScaled(value, unit) {
+    if (!unit) return localise(Math.round(value).toLocaleString('en-US'));
+    var rounded = Math.round(value * 10) / 10;
+    var text = Math.abs(rounded - Math.round(rounded)) < 0.05
+      ? String(Math.round(rounded))
+      : rounded.toFixed(1);
+    return localise(text) + unit;
+  }
+
   function countUp(el) {
     var target = parseInt(el.getAttribute('data-count'), 10);
     if (isNaN(target) || reduced) return;
 
     var suffix = el.getAttribute('data-suffix') || '';
+    /* Decide the unit from the final value and animate the mantissa, so the
+       label does not flip through হাজার → লক্ষ while counting. */
+    var end = scale(target);
+    var finalValue = end[0], unit = end[1];
+
     var start = performance.now();
     var duration = 1100;
 
     function frame(now) {
       var p = Math.min((now - start) / duration, 1);
       var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = localise(Math.round(target * eased).toLocaleString('en-US')) + suffix;
+      el.textContent = formatScaled(finalValue * eased, unit) + suffix;
       if (p < 1) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);

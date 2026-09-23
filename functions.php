@@ -383,8 +383,62 @@ function bnwp_commons_thumb($url, $width = 480) {
 }
 
 /** Validate a stored image URL and size it down where possible. */
+/**
+ * Accept any way of naming a Commons file and return its upload URL.
+ *
+ * Handles a Commons file page (commons.wikimedia.org/wiki/File:X), a bare
+ * "File:X" title, and the underlying upload.wikimedia.org URL. MediaWiki
+ * stores a file at /{md5[0]}/{md5[0..1]}/{name}, so the path is computable
+ * from the name alone — no API call needed.
+ */
+function bnwp_commons_url($input) {
+    $input = trim((string) $input);
+
+    if ($input === '' || strpos($input, 'upload.wikimedia.org') !== false) {
+        return $input;
+    }
+
+    if (preg_match('#commons\.wikimedia\.org/.*?(?:File|Image)(?::|%3A)(.+)$#iu', $input, $m)) {
+        $title = $m[1];                       // a Commons file page URL
+    } elseif (preg_match('#^(?:File|Image):(.+)$#iu', $input, $m)) {
+        $title = $m[1];                       // a bare "File:Name.jpg" title
+    } else {
+        return $input;                        // an ordinary URL or path
+    }
+
+    $title = explode('#', explode('?', $title)[0])[0];
+    $title = str_replace(' ', '_', trim(rawurldecode($title)));
+    if ($title === '') {
+        return $input;
+    }
+
+    $hash = md5($title);
+    return 'https://upload.wikimedia.org/wikipedia/commons/'
+        . $hash[0] . '/' . substr($hash, 0, 2) . '/' . $title;
+}
+
+/** Percent-encode a URL path so non-Latin filenames survive intact. */
+function bnwp_encode_url($url) {
+    $parts = wp_parse_url($url);
+    if (empty($parts['path'])) {
+        return $url;
+    }
+
+    $path = implode('/', array_map(function ($segment) {
+        return rawurlencode(rawurldecode($segment));
+    }, explode('/', $parts['path'])));
+
+    $out = (isset($parts['scheme']) ? $parts['scheme'] . '://' : '')
+        . (isset($parts['host']) ? $parts['host'] : '') . $path;
+
+    return empty($parts['query']) ? $out : $out . '?' . $parts['query'];
+}
+
+/**
+ * Validate a stored image reference and size it down where possible.
+ */
 function bnwp_img_url($url, $width = 480, $fallback = '') {
-    $url = trim((string) $url);
+    $url = bnwp_commons_url(trim((string) $url));
 
     if ($url === '' || $url === '#') {
         return $fallback !== '' ? $fallback : bnwp_avatar_placeholder();
@@ -393,7 +447,7 @@ function bnwp_img_url($url, $width = 480, $fallback = '') {
         return $fallback !== '' ? $fallback : bnwp_avatar_placeholder();
     }
 
-    return bnwp_commons_thumb($url, $width);
+    return bnwp_encode_url(bnwp_commons_thumb($url, $width));
 }
 
 /**
@@ -417,14 +471,25 @@ function bnwp_image($url, $args = array()) {
     // 1x / 2x for Commons-hosted files, both snapped to a servable width.
     $srcset = '';
     if (strpos($src, 'upload.wikimedia.org') !== false) {
-        $x2 = bnwp_commons_thumb($url, bnwp_commons_width($a['w']) * 2);
+        $x2 = bnwp_encode_url(bnwp_commons_thumb(bnwp_commons_url($url), bnwp_commons_width($a['w']) * 2));
         if ($x2 !== $src) {
             $srcset = esc_url($src) . ' 1x, ' . esc_url($x2) . ' 2x';
         }
     }
 
+    // External files can vanish — one of the team photos was deleted from
+    // Commons — so fall back rather than leaving a broken image icon.
+    $placeholder = $a['fallback'] !== '' ? $a['fallback'] : bnwp_avatar_placeholder();
+    $onerror = '';
+    if ($src !== $placeholder && strpos($src, home_url()) !== 0) {
+        $onerror = sprintf(
+            ' onerror="this.onerror=null;this.removeAttribute(\'srcset\');this.src=\'%s\'"',
+            esc_url($placeholder)
+        );
+    }
+
     printf(
-        '<img src="%1$s"%2$s width="%3$d"%4$s alt="%5$s" loading="%6$s" decoding="async"%7$s style="object-fit:%8$s">',
+        '<img src="%1$s"%2$s width="%3$d"%4$s alt="%5$s" loading="%6$s" decoding="async"%7$s style="object-fit:%8$s"%9$s>',
         esc_url($src),
         $srcset ? ' srcset="' . $srcset . '"' : '',
         (int) $a['w'],
@@ -432,7 +497,8 @@ function bnwp_image($url, $args = array()) {
         esc_attr($a['alt']),
         esc_attr($a['loading']),
         $a['class'] ? ' class="' . esc_attr($a['class']) . '"' : '',
-        esc_attr($a['fit'])
+        esc_attr($a['fit']),
+        $onerror
     );
 }
 
@@ -1128,13 +1194,51 @@ function bnwp_pagination() {
 
 function bnwp_stats_default() {
     return implode("\n", array(
-        '১৬ লক্ষ+ | 1.6M+ | শব্দ যোগ হয়েছে | words added',
-        '2000+ | নিবন্ধ তৈরি | articles created',
-        '100+ | চিত্র আপলোড | images uploaded',
-        '20+ | স্বেচ্ছাসেবী আয়োজক | volunteer organisers',
+        '1600000 | শব্দ যোগ হয়েছে | words added',
+        '2000 | নিবন্ধ তৈরি | articles created',
+        '100 | চিত্র আপলোড | images uploaded',
+        '20 | স্বেচ্ছাসেবী আয়োজক | volunteer organisers',
         '2 | কর্মশালা | workshops',
         '2 | টিউটোরিয়াল | tutorials',
     ));
+}
+
+/**
+ * Pick the unit a number should be shown in.
+ *
+ * English uses the short scale (K / M / B); Bengali uses the South Asian
+ * scale (হাজার / লক্ষ / কোটি), which groups differently — a lakh is 10^5, not
+ * 10^6 — so the two cannot share one divisor. Below 10,000 both show the
+ * number in full. Returns [mantissa, unit].
+ */
+function bnwp_number_scale($n) {
+    $n = (float) $n;
+
+    if (bnwp_is_en()) {
+        if ($n >= 1e9) { return array($n / 1e9, 'B'); }
+        if ($n >= 1e6) { return array($n / 1e6, 'M'); }
+        if ($n >= 1e4) { return array($n / 1e3, 'K'); }
+        return array($n, '');
+    }
+
+    if ($n >= 1e7) { return array($n / 1e7, ' কোটি'); }
+    if ($n >= 1e5) { return array($n / 1e5, ' লক্ষ'); }
+    if ($n >= 1e4) { return array($n / 1e3, ' হাজার'); }
+    return array($n, '');
+}
+
+/** A whole number rendered for the current language, scaled where it helps. */
+function bnwp_format_number($n) {
+    list($value, $unit) = bnwp_number_scale($n);
+
+    if ($unit === '') {
+        return bnwp_num(number_format_i18n((float) $n));
+    }
+
+    $rounded = round($value, 1);
+    $decimals = (abs($rounded - round($rounded)) < 0.05) ? 0 : 1;
+
+    return bnwp_num(number_format_i18n($rounded, $decimals)) . $unit;
 }
 
 /**
@@ -1162,28 +1266,24 @@ function bnwp_stats() {
             return bnwp_is_en() && $en !== '' ? $en : $bn;
         };
 
-        if (count($parts) >= 4) {
-            $value = $pick($parts[0], $parts[1]);
-            $label = $pick($parts[2], $parts[3]);
-        } else {
-            $value = isset($parts[0]) ? $parts[0] : '';
-            $label = $pick(
-                isset($parts[1]) ? $parts[1] : '',
-                isset($parts[2]) ? $parts[2] : ''
-            );
-        }
+        $value = isset($parts[0]) ? $parts[0] : '';
+        $label = $pick(
+            isset($parts[1]) ? $parts[1] : '',
+            isset($parts[2]) ? $parts[2] : ''
+        );
 
         if ($value === '') {
             continue;
         }
 
-        // "2000+" -> count up to 2000 with a "+" suffix. Anything else is shown as typed.
+        // A plain number is scaled for the language and always gets a "+".
+        // Anything else is shown exactly as typed.
         $count = null;
         $suffix = '';
-        if (preg_match('/^(\d+)\s*(\+?)$/', $value, $m)) {
-            $count  = (int) $m[1];
-            $suffix = $m[2];
-            $value  = bnwp_num(number_format_i18n($count)) . $suffix;
+        if (preg_match('/^(\d[\d,\s]*)\+?$/u', $value, $m)) {
+            $count  = (int) preg_replace('/\D/', '', $m[1]);
+            $suffix = '+';
+            $value  = bnwp_format_number($count) . $suffix;
         }
 
         $rows[] = array('value' => $value, 'count' => $count, 'suffix' => $suffix, 'label' => $label);
@@ -1196,7 +1296,7 @@ function bnwp_customize($wp_customize) {
     $wp_customize->add_section('bnwp_impact', array(
         'title'       => __('Impact numbers', 'bnwp'),
         'priority'    => 30,
-        'description' => __('One row per line.<br><br><strong>value | Bengali label | English label</strong><br>or, when the value itself differs by language:<br><strong>Bengali value | English value | Bengali label | English label</strong><br><br>A plain number such as 2000+ counts up when it scrolls into view and its digits are localised automatically. Anything else is shown exactly as typed.', 'bnwp'),
+        'description' => __('One row per line:<br><strong>number | Bengali label | English label</strong><br><br>Enter the plain number — 1600000, not "16 lakh". It is scaled and localised automatically: 1.6M in English, ১৬ লক্ষ in Bengali, with a + appended and a count-up as it scrolls into view. Numbers below 10,000 are shown in full. Anything that is not a number is printed exactly as typed.', 'bnwp'),
     ));
 
     $wp_customize->add_setting('bnwp_stats', array(
