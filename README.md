@@ -1,106 +1,213 @@
-# BNWP WikiConnect WordPress Theme
+# BNWP WikiConnect v2
 
-A Bengali-first WordPress theme for the Bangla WikiConnect community website.
+A Bengali-first WordPress theme for [Bangla WikiConnect](https://connect.bnwp.org/).
+Bilingual, accessible, and deliberately small: no framework, no build step, no
+npm. Plain PHP, CSS custom properties and vanilla JavaScript.
 
-![Theme preview](assets/uploads/bnwp-theme.png)
+![Theme preview](screenshot.png)
 
-## Features
+---
 
-- Bengali and English views
-- Project and team-member content types
-- Team taxonomy and archive pages
-- Media Library selectors for project and member images
-- Responsive Bootstrap 5 layout
-- Light and dark modes
+## What it does
+
+- **One record, two languages.** A post holds its Bengali in the normal title
+  and editor, and its English in a panel below. No duplicate posts to keep in
+  step.
+- **Project and team-member content types**, with a team taxonomy, per-project
+  organisers and jury, and external jurors who link off-site.
+- **Light and dark themes**, every colour pair measured against WCAG AA.
+- **Numbers that localise themselves** — enter `1600000`, get `1.6M+` in
+  English and `১৬ লক্ষ+` in Bengali.
+- **Wikimedia Commons images** by URL, file-page link or `File:` title,
+  resized to a width Commons will actually serve.
+- **SEO** — hreflang, Open Graph, Twitter cards and JSON-LD, all standing aside
+  when Yoast is active and filling its gaps when it has nothing better.
 
 ## Requirements
 
-- WordPress 6.0+
-- PHP 7.4+
+WordPress 6.4+, PHP 7.4+. No other dependencies.
 
-## Installation
+## Installing
 
-Copy the theme into:
+**Appearance → Themes → Add New → Upload Theme**, choose the zip, activate.
+Then save **Settings → Permalinks** once so the project and member archives
+register.
 
-```text
-wp-content/themes/bnwp-wikiconnect/
+To build the zip from a checkout:
+
+```bash
+git archive v2 --prefix=bnwp-wikiconnect-v2/ -o bnwp-wikiconnect-v2.zip
 ```
 
-Activate **BNWP WikiConnect** from **Appearance → Themes**, then save **Settings → Permalinks** once to refresh archive routes.
+---
 
-For the local XAMPP installation used during development, the active copy is:
+## Writing content
 
-```text
-C:\xampp\htdocs\bnwp\wp-content\themes\bnwp-wikiconnect
-```
+### Both languages, one screen
 
-## Content
+Every post, page, project and member has an **English version** panel beneath
+the editor: English title, body, excerpt, and the extra fields that type needs.
+The Bengali side is the normal WordPress title box and editor.
 
-The theme registers:
+**Leave anything blank and it falls back to the Bengali**, so a half-translated
+record is never an empty page. An **EN** column on each list screen shows what
+still needs doing.
 
-| Type | WordPress key | Archive |
+Readers switch with the globe button in the header, which adds `?lang=en`.
+
+### Adding a project
+
+**Projects → Add New.** Title and editor hold the Bengali. The **Project
+Details** box holds:
+
+| Field | Notes |
+|---|---|
+| Logo, Cover image | Media Library, a full URL, or a Commons `File:Name.svg` title |
+| Wiki URL | The Meta or project page; drives the sidebar link |
+| Lead | One sentence. Used on cards and as the meta description |
+| Status | Ongoing / Upcoming / Completed — drives the coloured chip |
+| Organisers, Jury | Multi-select; Ctrl or Cmd click for several |
+
+Organisers and jury are stored by **wiki username**, not post ID, so one
+selection serves the project in both languages. Leave Jury empty and it falls
+back to everyone in the Jury team.
+
+### Adding a team member
+
+**Team Members → Add New.** Give the slug in Latin lowercase. Fill **Wiki
+username** — it is the key that links a person to the projects they work on.
+Tick a team (`cot`, `technical`, `jury`) in the Teams box.
+
+For a guest or external juror with no page here, set **External profile URL**.
+Their cards then link straight there, with an outward arrow.
+
+### Adding a post
+
+**Posts → Add New**, as normal, plus the English panel. The **BNWP Post
+Details** box adds the author's wiki username, which links to their Meta
+profile.
+
+---
+
+## Settings without code
+
+**Appearance → Customise**
+
+| Section | Format, one row per line |
+|---|---|
+| **Impact numbers** | `number \| Bengali label \| English label` |
+| **Partners** | `Bengali name \| English name \| URL \| image` |
+| **Social channels** | `Label \| URL \| icon` |
+
+Impact numbers take a plain number and scale it for each language — English
+short scale (K/M/B), Bengali South Asian scale (হাজার/লক্ষ/কোটি). Below 10,000
+the number is shown in full. A `+` is appended automatically, and the figure
+counts up as it scrolls into view.
+
+Partner images accept a filename shipped with the theme, a full URL, or a
+Commons title. Known social icons: `facebook`, `youtube`, `linkedin`,
+`telegram`, `github`, `instagram`, `mastodon`.
+
+Team names in English come from an **English name** field on each term under
+**Team Members → Teams**, with sensible defaults for the three that ship.
+
+---
+
+## How it is built
+
+### Content types
+
+| Type | Key | Archive |
 |---|---|---|
 | Projects | `project` | `/projects/` |
 | Team members | `persona` | `/persona/` |
-| Teams | `team` | `/teams/{slug}/` |
+| Teams | `team` (taxonomy) | `/teams/{slug}/` |
 
-Important team slugs are `cot`, `technical`, and `jury`.
+Important team slugs: `cot`, `technical`, `jury`.
 
-### Project fields
+### Meta keys
 
-- `_bnwp_logo`
-- `_bnwp_cover`
-- `_bnwp_wiki`
-- `_bnwp_lead`
-- `_bnwp_language`
+Bengali values use the base key; English uses the same key with `_en`.
 
-### Team-member fields
-
-- `_bnwp_name`
-- `_bnwp_role`
-- `_bnwp_username`
-- `_bnwp_location`
-- `_bnwp_email`
-- `_bnwp_img`
-- `_bnwp_bio`
-- `_bnwp_language`
-
-Image fields accept Media Library images or direct external image URLs.
-
-## Languages
-
-Bengali is the default. Add `?lang=en` for English views.
-
-Projects, team members, posts, and pages need separate Bengali and English records. English translations use `_bnwp_language = en` and normally use an `-en` slug, for example:
-
-```text
-/about/       → /about-en/?lang=en
-/projects/wlc/ → /projects/wlc-en/?lang=en
+```
+_bnwp_logo      _bnwp_cover     _bnwp_wiki      _bnwp_status
+_bnwp_lead      _bnwp_lead_en
+_bnwp_name      _bnwp_role      _bnwp_role_en
+_bnwp_username  _bnwp_location  _bnwp_location_en
+_bnwp_email     _bnwp_img       _bnwp_bio       _bnwp_bio_en
+_bnwp_link      _bnwp_user
+_bnwp_organisers  _bnwp_jury        (comma-separated wiki usernames)
+_bnwp_title_en    _bnwp_body_en     _bnwp_excerpt_en
 ```
 
-Theme interface labels and dates switch automatically. Bengali dates use Bengali month names and numerals.
+`_bnwp_language` and `_bnwp_source_file` are leftovers — the first from the
+two-record era, the second from the original Hugo import. Both are still
+registered so old records keep their data, but nothing reads them.
 
-## Main files
+### The bilingual layer
+
+`bnwp_current_language()` reads the URL and nothing else. Three filters do the
+swapping — `bnwp_filter_title()`, `bnwp_filter_content()`,
+`bnwp_filter_excerpt()` — so templates call `the_title()` and `the_content()`
+normally. For meta, `bnwp_get_meta_i18n('_bnwp_lead')` returns `_bnwp_lead_en`
+in English when it is set.
+
+### Images
+
+`bnwp_image()` is the single entry point. It hands Media Library files to
+`wp_get_attachment_image()` so WordPress serves a generated size with a
+`srcset`, and rewrites Commons URLs to thumbnails.
+
+**Commons serves thumbnails only at 120, 250, 500, 960, 1280 and 1920 px** and
+returns 400 for anything else. `bnwp_commons_width()` snaps any request up to
+the next allowed size. Do not remove it — every Commons image breaks without it.
+
+Every external image carries an `onerror` fallback, because Commons files do
+occasionally get deleted.
+
+### Files
 
 | File | Purpose |
 |---|---|
-| `functions.php` | Theme setup, content types, metadata, languages, and assets |
+| `functions.php` | Setup, bilingual layer, images, content types, admin, SEO |
 | `front-page.php` | Homepage |
-| `header.php` / `footer.php` | Shared site layout |
-| `archive-*.php` | Project and member listings |
-| `single-*.php` | Project and member details |
-| `style.css` | Theme metadata and custom styling |
+| `header.php`, `footer.php` | Shared layout |
+| `archive-project.php`, `single-project.php` | Projects |
+| `archive-persona.php`, `single-persona.php`, `taxonomy-team.php` | People and teams |
+| `page-posts.php`, `page-newsroom.php`, `page-contact.php` | Pages whose content comes from the template |
+| `assets/css/app.css` | All styling; tokens at the top |
+| `assets/js/app.js` | Colour mode, nav, scroll reveal, count-up |
 
-## Development checks
+A page whose content comes from its template is matched by slug, so the
+Newsroom page must keep the slug `newsroom` for `page-newsroom.php` to apply.
 
-Run PHP syntax checks before committing:
+---
 
-```powershell
-Get-ChildItem -Filter *.php | ForEach-Object { C:\xampp\php\php.exe -l $_.FullName }
+## Development
+
+There is no build step. Edit the PHP and CSS directly.
+
+Before committing, lint:
+
+```bash
+for f in *.php; do php -l "$f"; done
 ```
 
-Do not commit a full WordPress installation, database files, `wp-config.php`, uploads, credentials, or `.git` directories from the XAMPP site.
+Do not commit a WordPress install, `wp-config.php`, uploads, or credentials.
 
-## License
+## Contributing
 
-GPL-2.0-or-later.
+Issues and pull requests welcome. Content changes — new projects, people,
+translations — are made in the WordPress admin, not here.
+
+## Licence
+
+GPL-2.0-or-later. See [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md).
+
+Images from Wikimedia Commons are mostly CC BY-SA and require attribution;
+each uploaded file carries its author and licence in the attachment caption.
+
+## Further reading
+
+[HANDOVER.md](HANDOVER.md) — current state of the site, what is blocked on the
+host, the reasoning behind the architecture, and what remains to be done.
