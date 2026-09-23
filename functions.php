@@ -37,8 +37,9 @@ function bnwp_setup() {
     add_image_size('bnwp-avatar', 320, 320, true);
 
     register_nav_menus(array(
-        'primary' => __('Primary Menu', 'bnwp'),
-        'footer'  => __('Footer Menu', 'bnwp'),
+        'primary'    => __('Primary Menu (Bengali)', 'bnwp'),
+        'primary_en' => __('Primary Menu (English)', 'bnwp'),
+        'footer'     => __('Footer Menu', 'bnwp'),
     ));
 }
 add_action('after_setup_theme', 'bnwp_setup');
@@ -186,27 +187,76 @@ function bnwp_translation_url($target) {
     return bnwp_lang_arg(home_url('/'), $target);
 }
 
-/** Restrict main-query listings to the current language. */
+/** The meta clause that limits a listing to the current language. */
+function bnwp_lang_meta_query($lang = null) {
+    $lang = $lang ? $lang : bnwp_current_language();
+    return array(
+        'relation' => 'OR',
+        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
+        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
+    );
+}
+
+/**
+ * Is there any content of this post type in the current language?
+ *
+ * Content is authored as separate Bengali and English records. Until the
+ * English twins exist, filtering strictly by language empties the English
+ * site — no projects, no team. So the filter only applies where there is
+ * something to show; otherwise the reader sees the Bengali records rather
+ * than a blank page.
+ */
+function bnwp_lang_has_content($post_type, $lang = null) {
+    static $cache = array();
+
+    $lang = $lang ? $lang : bnwp_current_language();
+    $key  = $post_type . '|' . $lang;
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    // Not the main query, so bnwp_filter_main_query() ignores it — no recursion.
+    $probe = new WP_Query(array(
+        'post_type'              => $post_type,
+        'post_status'            => 'publish',
+        'posts_per_page'         => 1,
+        'fields'                 => 'ids',
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => false,
+        'update_post_term_cache' => false,
+        'meta_query'             => array(
+            array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
+        ),
+    ));
+
+    return $cache[$key] = !empty($probe->posts);
+}
+
+/** Restrict main-query listings to the current language, where that language has content. */
 function bnwp_filter_main_query($query) {
     if (is_admin() || !$query->is_main_query()) {
         return;
     }
 
-    $applies = $query->is_post_type_archive(array('project', 'persona'))
-        || $query->is_tax('team')
-        || $query->is_home()
-        || $query->is_search();
-
-    if (!$applies) {
+    if ($query->is_post_type_archive('project')) {
+        $type = 'project';
+    } elseif ($query->is_post_type_archive('persona') || $query->is_tax('team')) {
+        $type = 'persona';
+    } elseif ($query->is_home()) {
+        $type = 'post';
+    } elseif ($query->is_search()) {
+        $type = null; // search spans everything; always filter
+    } else {
         return;
     }
 
-    $meta_query = (array) $query->get('meta_query');
-    $meta_query[] = array(
-        'relation' => 'OR',
-        array('key' => '_bnwp_language', 'value' => bnwp_current_language(), 'compare' => '='),
-        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-    );
+    if ($type !== null && !bnwp_lang_has_content($type)) {
+        return;
+    }
+
+    $meta_query   = (array) $query->get('meta_query');
+    $meta_query[] = bnwp_lang_meta_query();
     $query->set('meta_query', $meta_query);
 }
 add_action('pre_get_posts', 'bnwp_filter_main_query');
@@ -789,10 +839,17 @@ function bnwp_primary_menu_fallback() {
     echo '</ul>';
 }
 
+/**
+ * The assigned WP menu is authored in one language. Using it for both views
+ * left the English site with a Bengali menu, so English prefers its own
+ * menu location and otherwise falls back to the theme's English labels.
+ */
 function bnwp_primary_nav() {
-    if (has_nav_menu('primary')) {
+    $location = bnwp_is_en() ? 'primary_en' : 'primary';
+
+    if (has_nav_menu($location)) {
         wp_nav_menu(array(
-            'theme_location' => 'primary',
+            'theme_location' => $location,
             'container'      => false,
             'menu_class'     => 'nav__list',
             'fallback_cb'    => 'bnwp_primary_menu_fallback',
@@ -800,6 +857,7 @@ function bnwp_primary_nav() {
         ));
         return;
     }
+
     bnwp_primary_menu_fallback();
 }
 
@@ -835,7 +893,7 @@ function bnwp_pagination() {
 
 function bnwp_stats_default() {
     return implode("\n", array(
-        '১৬ লক্ষ+ | শব্দ যোগ হয়েছে | words added',
+        '১৬ লক্ষ+ | 1.6M+ | শব্দ যোগ হয়েছে | words added',
         '2000+ | নিবন্ধ তৈরি | articles created',
         '100+ | চিত্র আপলোড | images uploaded',
         '20+ | স্বেচ্ছাসেবী আয়োজক | volunteer organisers',
@@ -846,8 +904,13 @@ function bnwp_stats_default() {
 
 /**
  * Parse the Customiser textarea into stat rows.
- * One per line:  value | Bengali label | English label
- * A purely numeric value (optionally with a trailing +) animates on scroll.
+ *
+ * Three fields:  value | Bengali label | English label
+ * Four fields:   Bengali value | English value | Bengali label | English label
+ *
+ * The four-field form exists for word-numbers such as "১৬ লক্ষ+", which have
+ * no meaning in the English view. Plain numerals are localised automatically,
+ * so they only need the three-field form.
  */
 function bnwp_stats() {
     $raw = get_theme_mod('bnwp_stats', bnwp_stats_default());
@@ -860,14 +923,24 @@ function bnwp_stats() {
         }
 
         $parts = array_map('trim', explode('|', $line));
-        $value = isset($parts[0]) ? $parts[0] : '';
+        $pick  = function ($bn, $en) {
+            return bnwp_is_en() && $en !== '' ? $en : $bn;
+        };
+
+        if (count($parts) >= 4) {
+            $value = $pick($parts[0], $parts[1]);
+            $label = $pick($parts[2], $parts[3]);
+        } else {
+            $value = isset($parts[0]) ? $parts[0] : '';
+            $label = $pick(
+                isset($parts[1]) ? $parts[1] : '',
+                isset($parts[2]) ? $parts[2] : ''
+            );
+        }
+
         if ($value === '') {
             continue;
         }
-
-        $label = bnwp_is_en()
-            ? (isset($parts[2]) && $parts[2] !== '' ? $parts[2] : (isset($parts[1]) ? $parts[1] : ''))
-            : (isset($parts[1]) ? $parts[1] : '');
 
         // "2000+" -> count up to 2000 with a "+" suffix. Anything else is shown as typed.
         $count = null;
@@ -888,7 +961,7 @@ function bnwp_customize($wp_customize) {
     $wp_customize->add_section('bnwp_impact', array(
         'title'       => __('Impact numbers', 'bnwp'),
         'priority'    => 30,
-        'description' => __('One per line: value | Bengali label | English label. A plain number such as 2000+ counts up when it scrolls into view; anything else (১৬ লক্ষ+) is shown exactly as typed.', 'bnwp'),
+        'description' => __('One row per line.<br><br><strong>value | Bengali label | English label</strong><br>or, when the value itself differs by language:<br><strong>Bengali value | English value | Bengali label | English label</strong><br><br>A plain number such as 2000+ counts up when it scrolls into view and its digits are localised automatically. Anything else is shown exactly as typed.', 'bnwp'),
     ));
 
     $wp_customize->add_setting('bnwp_stats', array(

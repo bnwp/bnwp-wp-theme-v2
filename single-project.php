@@ -89,17 +89,16 @@ while (have_posts()) : the_post();
                 </div>
 
                 <?php
-                $jury = new WP_Query(array(
+                $jury_args = array(
                     'post_type'      => 'persona',
                     'posts_per_page' => 6,
                     'no_found_rows'  => true,
                     'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'jury')),
-                    'meta_query'     => array(
-                        'relation' => 'OR',
-                        array('key' => '_bnwp_language', 'value' => bnwp_current_language(), 'compare' => '='),
-                        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-                    ),
-                ));
+                );
+                if (bnwp_lang_has_content('persona')) {
+                    $jury_args['meta_query'] = array(bnwp_lang_meta_query());
+                }
+                $jury = new WP_Query($jury_args);
                 if ($jury->have_posts()) : ?>
                 <div class="panel">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
@@ -126,18 +125,17 @@ while (have_posts()) : the_post();
     </div>
 
     <?php
-    $related = new WP_Query(array(
+    $related_args = array(
         'post_type'      => 'project',
         'posts_per_page' => 3,
         'post__not_in'   => array(get_the_ID()),
         'no_found_rows'  => true,
         'orderby'        => 'rand',
-        'meta_query'     => array(
-            'relation' => 'OR',
-            array('key' => '_bnwp_language', 'value' => bnwp_current_language(), 'compare' => '='),
-            array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-        ),
-    ));
+    );
+    if (bnwp_lang_has_content('project')) {
+        $related_args['meta_query'] = array(bnwp_lang_meta_query());
+    }
+    $related = new WP_Query($related_args);
     if ($related->have_posts()) : ?>
     <section class="section section--sunken">
         <div class="wrap">

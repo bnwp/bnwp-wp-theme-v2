@@ -16,30 +16,6 @@ $stats = bnwp_stats();
 <section class="hero">
     <div class="wrap">
 
-        <div class="hero__intro">
-            <p class="eyebrow reveal"><?php echo esc_html(bnwp_text('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh')); ?></p>
-
-            <h1 class="reveal"><?php echo esc_html(bnwp_text(
-                'বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ',
-                'Bangla WikiConnect is a collaborative initiative'
-            )); ?></h1>
-
-            <p class="hero__lead reveal"><?php echo esc_html(bnwp_text(
-                'বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর আমরা দৃষ্টি নিবদ্ধ করি। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে উইকিপিডিয়া ও এর সহযোগী প্রকল্প — উইকিউক্তি, উইকিভ্রমণ, উইকিবই ও উইকিঅভিধানে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করাই আমাদের লক্ষ্য।',
-                'We focus on growing and expanding Wikipedia content in Bangla. Through contests, edit-a-thons and training programmes, we aim to build high-quality, inclusive content across Wikipedia and its sister projects — Wikiquote, Wikivoyage, Wikibooks and Wiktionary.'
-            )); ?></p>
-
-            <div class="hero__actions reveal">
-                <a class="btn btn--primary" href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>">
-                    <?php echo esc_html(bnwp_text('আরও জানুন', 'Learn more')); ?>
-                </a>
-                <a class="btn btn--ghost" href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect">
-                    <?php echo esc_html(bnwp_text('মেটা’উইকিতে পড়ুন', 'Read on Meta-Wiki')); ?>
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-                </a>
-            </div>
-        </div>
-
         <?php if ($stats) : ?>
         <div class="hero__showcase">
             <div class="hero__mark reveal">
@@ -68,21 +44,42 @@ $stats = bnwp_stats();
         </div>
         <?php endif; ?>
 
+        <div class="hero__intro">
+            <p class="eyebrow reveal"><?php echo esc_html(bnwp_text('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh')); ?></p>
+
+            <h1 class="reveal"><?php echo esc_html(bnwp_text(
+                'বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ',
+                'Bangla WikiConnect is a collaborative initiative'
+            )); ?></h1>
+
+            <p class="hero__lead reveal"><?php echo esc_html(bnwp_text(
+                'বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর আমরা দৃষ্টি নিবদ্ধ করি। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে উইকিপিডিয়া ও এর সহযোগী প্রকল্প — উইকিউক্তি, উইকিভ্রমণ, উইকিবই ও উইকিঅভিধানে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করাই আমাদের লক্ষ্য।',
+                'We focus on growing and expanding Wikipedia content in Bangla. Through contests, edit-a-thons and training programmes, we aim to build high-quality, inclusive content across Wikipedia and its sister projects — Wikiquote, Wikivoyage, Wikibooks and Wiktionary.'
+            )); ?></p>
+
+            <div class="hero__actions reveal">
+                <a class="btn btn--primary" href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>">
+                    <?php echo esc_html(bnwp_text('আরও জানুন', 'Learn more')); ?>
+                </a>
+                <a class="btn btn--ghost" href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect">
+                    <?php echo esc_html(bnwp_text('মেটা’উইকিতে পড়ুন', 'Read on Meta-Wiki')); ?>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+                </a>
+            </div>
+        </div>
+
     </div>
 </section>
 
 
 <?php
-$projects = new WP_Query(array(
-    'post_type'      => 'project',
-    'posts_per_page' => 6,
-    'no_found_rows'  => true,
-    'meta_query'     => array(
-        'relation' => 'OR',
-        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
-        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-    ),
-));
+// Only filter by language where that language actually has records — otherwise
+// the English homepage would show no projects at all.
+$project_args = array('post_type' => 'project', 'posts_per_page' => 6, 'no_found_rows' => true);
+if (bnwp_lang_has_content('project')) {
+    $project_args['meta_query'] = array(bnwp_lang_meta_query());
+}
+$projects = new WP_Query($project_args);
 if ($projects->have_posts()) : ?>
 <section class="section section--sunken">
     <div class="wrap">
@@ -127,16 +124,11 @@ if ($projects->have_posts()) : ?>
 
 
 <?php
-$recent = new WP_Query(array(
-    'post_type'      => 'post',
-    'posts_per_page' => 4,
-    'no_found_rows'  => true,
-    'meta_query'     => array(
-        'relation' => 'OR',
-        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
-        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-    ),
-));
+$recent_args = array('post_type' => 'post', 'posts_per_page' => 4, 'no_found_rows' => true);
+if (bnwp_lang_has_content('post')) {
+    $recent_args['meta_query'] = array(bnwp_lang_meta_query());
+}
+$recent = new WP_Query($recent_args);
 if ($recent->have_posts()) : ?>
 <section class="section">
     <div class="wrap">
@@ -170,17 +162,16 @@ if ($recent->have_posts()) : ?>
 
 
 <?php
-$people = new WP_Query(array(
+$people_args = array(
     'post_type'      => 'persona',
     'posts_per_page' => 8,
     'no_found_rows'  => true,
     'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot')),
-    'meta_query'     => array(
-        'relation' => 'OR',
-        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
-        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-    ),
-));
+);
+if (bnwp_lang_has_content('persona')) {
+    $people_args['meta_query'] = array(bnwp_lang_meta_query());
+}
+$people = new WP_Query($people_args);
 if ($people->have_posts()) : ?>
 <section class="section section--sunken">
     <div class="wrap">
