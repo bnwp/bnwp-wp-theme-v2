@@ -39,6 +39,7 @@ $project = get_post_type_archive_link('project');
                         <li><a href="<?php echo esc_url(bnwp_page_url('posts', $lang)); ?>"><?php echo esc_html(bnwp_text('পোস্টসমূহ', 'Posts')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_page_url('contact', $lang)); ?>"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_page_url('privacy', $lang)); ?>"><?php echo esc_html(bnwp_text('গোপনীয়তা বিবৃতি', 'Privacy statement')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_page_url('cookies', $lang)); ?>"><?php echo esc_html(bnwp_text('কুকি বিবৃতি', 'Cookie statement')); ?></a></li>
                     </ul>
                 <?php endif; ?>
             </div>

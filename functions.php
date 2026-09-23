@@ -1091,15 +1091,24 @@ function bnwp_breadcrumb_trail() {
 function bnwp_schema() {
     $graph = array();
 
-    $org = array(
+    // sameAs tells search engines which accounts are genuinely ours, which is
+    // the main entity-resolution signal an organisation can give.
+    $same_as = array('https://meta.wikimedia.org/wiki/Bangla_WikiConnect');
+    foreach (bnwp_socials() as $channel) {
+        if (!empty($channel['url'])) {
+            $same_as[] = $channel['url'];
+        }
+    }
+
+    $graph[] = array(
         '@type'  => 'Organization',
         '@id'    => home_url('/#organization'),
         'name'   => bnwp_site_name(),
         'url'    => home_url('/'),
         'logo'   => get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_LOGO.png',
-        'sameAs' => array('https://meta.wikimedia.org/wiki/Bangla_WikiConnect'),
+        'email'  => 'connect@bnwp.org',
+        'sameAs' => array_values(array_unique($same_as)),
     );
-    $graph[] = $org;
 
     if (is_singular('post')) {
         $graph[] = array(
