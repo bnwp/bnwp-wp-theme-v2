@@ -142,7 +142,16 @@ function bnwp_translation_url($target) {
     $target = $target === 'en' ? 'en' : 'bn';
 
     $request = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
-    $current = home_url(strtok($request, '?'));
+    $path    = strtok($request, '?');
+
+    // REQUEST_URI already contains any subdirectory the site lives in, so take
+    // only the scheme and host from home_url() — passing the path through it
+    // would double the prefix (/intrepid/intrepid/...).
+    $home    = wp_parse_url(home_url('/'));
+    $origin  = (isset($home['scheme']) ? $home['scheme'] : 'https') . '://'
+             . (isset($home['host']) ? $home['host'] : '')
+             . (isset($home['port']) ? ':' . $home['port'] : '');
+    $current = $origin . $path;
 
     $query = array();
     if (!empty($_SERVER['QUERY_STRING'])) {
