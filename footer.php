@@ -16,7 +16,7 @@ $project = get_post_type_archive_link('project');
 
             <div>
                 <a class="brand" href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>" rel="home">
-                    <?php bnwp_logo_mark(34); ?>
+                    <?php bnwp_logo_img(36); ?>
                     <span class="brand__name"><?php echo esc_html(bnwp_site_name()); ?></span>
                 </a>
                 <p style="margin-top:1rem;color:var(--ink-soft);max-width:42ch;">

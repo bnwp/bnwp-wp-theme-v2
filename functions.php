@@ -211,14 +211,38 @@ function bnwp_filter_main_query($query) {
 }
 add_action('pre_get_posts', 'bnwp_filter_main_query');
 
-/** Keep ?lang=en attached as users click through the nav. */
-function bnwp_nav_lang_attr($atts, $item, $args, $depth) {
-    if (bnwp_is_en() && !empty($atts['href']) && strpos($atts['href'], home_url()) === 0) {
-        $atts['href'] = add_query_arg('lang', 'en', $atts['href']);
+/**
+ * Menu links, fixed in one place.
+ *
+ * The site's menu was built with root-relative custom links ("/about/",
+ * "/posts"). Those break on any install that is not at the domain root — a
+ * subdirectory staging clone sends every click back to production — and they
+ * bypass the language layer. Rewriting them through home_url() here fixes
+ * every menu item at once, without editing them one by one in the admin.
+ */
+function bnwp_nav_link_attr($atts, $item, $args, $depth) {
+    if (empty($atts['href'])) {
+        return $atts;
     }
+
+    $href = $atts['href'];
+
+    // "/about/" -> home_url('/about/'). Leaves "//host", "http(s)://" and "#" alone.
+    if (strlen($href) > 1 && $href[0] === '/' && $href[1] !== '/') {
+        $href = home_url($href);
+    }
+
+    if (bnwp_is_en() && strpos($href, home_url()) === 0) {
+        $href = add_query_arg('lang', 'en', $href);
+    }
+
+    $atts['href'] = $href;
+
+    $atts['class'] = trim((isset($atts['class']) ? $atts['class'] : '') . ' nav__link');
+
     return $atts;
 }
-add_filter('nav_menu_link_attributes', 'bnwp_nav_lang_attr', 10, 4);
+add_filter('nav_menu_link_attributes', 'bnwp_nav_link_attr', 10, 4);
 
 
 /* -------------------------------------------------------------------------
@@ -726,11 +750,18 @@ add_action('wp_head', 'bnwp_schema', 6);
  * 8. Navigation
  * ---------------------------------------------------------------------- */
 
-function bnwp_nav_link_class($classes, $item, $args, $depth) {
-    $classes[] = 'nav__link';
+/** `nav__item` belongs on the <li>; `nav__link` goes on the <a> (above). */
+function bnwp_nav_item_class($classes, $item, $args, $depth) {
+    $classes[] = 'nav__item';
     return $classes;
 }
-add_filter('nav_menu_css_class', 'bnwp_nav_link_class', 10, 4);
+add_filter('nav_menu_css_class', 'bnwp_nav_item_class', 10, 4);
+
+function bnwp_nav_submenu_class($classes, $args, $depth) {
+    $classes[] = 'nav__sub';
+    return $classes;
+}
+add_filter('nav_menu_submenu_css_class', 'bnwp_nav_submenu_class', 10, 3);
 
 /** Menu used when no WP menu is assigned — all URLs resolved, never hardcoded. */
 function bnwp_primary_menu_fallback() {
@@ -956,17 +987,20 @@ function bnwp_admin_assets($hook) {
 add_action('admin_enqueue_scripts', 'bnwp_admin_assets');
 
 
-/** Brand mark. The four petals are individually addressable for the CSS animation. */
-function bnwp_logo_mark($size = 40, $class = '') {
+/**
+ * The real WikiConnect mark. Used for the header brand, the footer brand and
+ * the rotating hero motif — one image everywhere, no synthetic stand-in.
+ */
+function bnwp_logo_img($size = 40, $class = '', $loading = 'lazy') {
+    // Source mark is 307x297.
+    $w = (int) round($size * (307 / 297));
     printf(
-        '<svg class="brandmark %s" width="%1$d" height="%1$d" viewBox="0 0 40 40" aria-hidden="true" focusable="false">',
+        '<img class="brand__logo %s" src="%s" width="%d" height="%d" alt="" loading="%s" decoding="async"%s>',
+        esc_attr($class),
+        esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_LOGO.png'),
+        $w,
         (int) $size,
-        esc_attr($class)
+        esc_attr($loading),
+        $loading === 'eager' ? ' fetchpriority="high"' : ''
     );
-    echo '<path class="brandmark__petal brandmark__petal--n" d="M20 2.5c5.2 6.2 5.2 8.4 0 10.6-5.2-2.2-5.2-4.4 0-10.6Z"/>';
-    echo '<path class="brandmark__petal brandmark__petal--e" d="M37.5 20c-6.2 5.2-8.4 5.2-10.6 0 2.2-5.2 4.4-5.2 10.6 0Z"/>';
-    echo '<path class="brandmark__petal brandmark__petal--s" d="M20 37.5c-5.2-6.2-5.2-8.4 0-10.6 5.2 2.2 5.2 4.4 0 10.6Z"/>';
-    echo '<path class="brandmark__petal brandmark__petal--w" d="M2.5 20c6.2-5.2 8.4-5.2 10.6 0-2.2 5.2-4.4 5.2-10.6 0Z"/>';
-    echo '<circle class="brandmark__core" cx="20" cy="20" r="6"/>';
-    echo '</svg>';
 }

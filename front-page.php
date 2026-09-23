@@ -22,7 +22,7 @@ $stats = array(
 
 <section class="hero">
     <div class="hero__orbit" aria-hidden="true">
-        <div class="hero__orbit-spin"><?php bnwp_logo_mark(560); ?></div>
+        <div class="hero__orbit-spin"><?php bnwp_logo_img(520, 'hero__orbit-logo'); ?></div>
     </div>
 
     <div class="wrap hero__inner">
@@ -229,7 +229,7 @@ if ($people->have_posts()) : ?>
                 array('Wiki_Loves_Women_South_Asia.png',          'Wiki Loves Women South Asia', 695, 353),
             );
             foreach ($partners as $p) :
-                $h = 72;
+                $h = 58; // must match .partner img height in app.css
                 $w = (int) round($h * ($p[2] / $p[3]));
             ?>
                 <div class="partner">

@@ -26,12 +26,7 @@ if (!defined('ABSPATH')) { exit; }
             <?php if (has_custom_logo()) : ?>
                 <?php the_custom_logo(); ?>
             <?php else : ?>
-                <img class="brand__logo"
-                     src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_Logo_small.png'); ?>"
-                     width="42" height="40"
-                     alt=""
-                     fetchpriority="high"
-                     decoding="async">
+                <?php bnwp_logo_img(40, '', 'eager'); ?>
             <?php endif; ?>
             <span class="brand__name"><?php echo esc_html(bnwp_site_name()); ?></span>
         </a>
