@@ -575,6 +575,17 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
+/* marks a card that leaves the site — external jurors, guest reviewers */
+.ext-mark {
+  width: 14px; height: 14px; flex: none;
+  color: var(--ink-faint);
+  transition: color var(--dur) var(--ease);
+}
+.peoplelist__row .ext-mark { margin-inline-start: auto; }
+.person .ext-mark { margin-top: .15rem; }
+.peoplelist__row:hover .ext-mark,
+.person:hover .ext-mark { color: var(--accent); }
+
 /* --- 11. Post list ------------------------------------------------------ */
 
 .postlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }

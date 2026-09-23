@@ -191,7 +191,7 @@ if ($people->have_posts()) : ?>
                 $username = bnwp_get_meta('_bnwp_username');
                 $role     = bnwp_get_meta('_bnwp_role');
             ?>
-            <a class="person reveal" href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>">
+            <a class="person reveal" href="<?php echo esc_url(bnwp_person_url()); ?>"<?php echo bnwp_person_is_external() ? ' rel="noopener"' : ''; ?>>
                 <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
                     'w' => 176, 'h' => 176, 'class' => 'person__avatar',
                     'alt' => get_the_title(),
@@ -199,6 +199,7 @@ if ($people->have_posts()) : ?>
                 <span class="person__name"><?php the_title(); ?></span>
                 <?php if ($username) : ?><span class="person__handle">@<?php echo esc_html($username); ?></span><?php endif; ?>
                 <?php if ($role) : ?><span class="person__role"><?php echo esc_html($role); ?></span><?php endif; ?>
+                <?php if (bnwp_person_is_external()) { bnwp_external_mark(); } ?>
             </a>
             <?php endwhile; wp_reset_postdata(); ?>
         </div>

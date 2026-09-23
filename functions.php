@@ -558,8 +558,38 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
-        '_bnwp_organisers', '_bnwp_jury',
+        '_bnwp_organisers', '_bnwp_jury', '_bnwp_link',
     );
+}
+
+/**
+ * Where a person's card should point.
+ *
+ * External jurors and guest reviewers often have no page on this site — only
+ * a profile elsewhere. Setting _bnwp_link on their record sends every card
+ * and list straight there instead of to an empty local page.
+ */
+function bnwp_person_url($post_id = null) {
+    $post_id  = $post_id ? $post_id : get_the_ID();
+    $external = trim((string) get_post_meta($post_id, '_bnwp_link', true));
+
+    if ($external !== '' && preg_match('#^https?://#i', $external)) {
+        return $external;
+    }
+    return bnwp_lang_arg(get_permalink($post_id));
+}
+
+/** True when this person links off-site. */
+function bnwp_person_is_external($post_id = null) {
+    $post_id  = $post_id ? $post_id : get_the_ID();
+    $external = trim((string) get_post_meta($post_id, '_bnwp_link', true));
+    return $external !== '' && preg_match('#^https?://#i', $external);
+}
+
+/** Small outward arrow, shown on cards that leave the site. */
+function bnwp_external_mark() {
+    echo '<svg class="ext-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" '
+        . 'fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>';
 }
 
 /** Meta keys stored as a comma-separated list rather than a single value. */
@@ -609,7 +639,13 @@ function bnwp_person_rows($query) {
         $query->the_post();
         $username = bnwp_get_meta('_bnwp_username');
         $role     = bnwp_get_meta('_bnwp_role');
-        printf('<a class="peoplelist__row" href="%s">', esc_url(bnwp_lang_arg(get_permalink())));
+        $external = bnwp_person_is_external();
+
+        printf(
+            '<a class="peoplelist__row" href="%s"%s>',
+            esc_url(bnwp_person_url()),
+            $external ? ' rel="noopener"' : ''
+        );
         bnwp_image(bnwp_get_meta('_bnwp_img'), array(
             'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
         ));
@@ -620,7 +656,11 @@ function bnwp_person_rows($query) {
         } elseif ($username !== '') {
             printf('<span class="peoplelist__role">@%s</span>', esc_html($username));
         }
-        echo '</span></a>';
+        echo '</span>';
+        if ($external) {
+            bnwp_external_mark();
+        }
+        echo '</a>';
     }
     echo '</div>';
     wp_reset_postdata();
@@ -1635,6 +1675,10 @@ function bnwp_persona_box($post) {
     bnwp_field_text(__('Email', 'bnwp'), '_bnwp_email', bnwp_get_meta('_bnwp_email', $post->ID), 'email');
     bnwp_field_media(__('Profile image', 'bnwp'), '_bnwp_img', bnwp_get_meta('_bnwp_img', $post->ID));
     bnwp_field_text(__('Short bio', 'bnwp'), '_bnwp_bio', bnwp_get_meta('_bnwp_bio', $post->ID));
+    bnwp_field_text(__('External profile URL', 'bnwp'), '_bnwp_link', bnwp_get_meta('_bnwp_link', $post->ID), 'url');
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('For guest or external jurors who have no page here: their cards link straight to this address instead of to a local profile.', 'bnwp')
+        . '</p>';
     bnwp_field_language($post->ID);
 }
 
