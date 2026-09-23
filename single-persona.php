@@ -8,10 +8,10 @@ get_header();
 
 while (have_posts()) : the_post();
     $username = bnwp_get_meta('_bnwp_username');
-    $role     = bnwp_get_meta('_bnwp_role');
-    $location = bnwp_get_meta('_bnwp_location');
+    $role     = bnwp_get_meta_i18n('_bnwp_role');
+    $location = bnwp_get_meta_i18n('_bnwp_location');
     $email    = bnwp_get_meta('_bnwp_email');
-    $bio      = bnwp_get_meta('_bnwp_bio');
+    $bio      = bnwp_get_meta_i18n('_bnwp_bio');
     $archive  = get_post_type_archive_link('persona');
     $terms    = get_the_terms(get_the_ID(), 'team');
 ?>

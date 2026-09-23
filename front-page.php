@@ -73,12 +73,7 @@ $stats = bnwp_stats();
 
 
 <?php
-// Only filter by language where that language actually has records — otherwise
-// the English homepage would show no projects at all.
 $project_args = array('post_type' => 'project', 'posts_per_page' => 6, 'no_found_rows' => true);
-if (bnwp_lang_has_content('project')) {
-    $project_args['meta_query'] = array(bnwp_lang_meta_query());
-}
 $projects = new WP_Query($project_args);
 if ($projects->have_posts()) : ?>
 <section class="section section--sunken">
@@ -97,7 +92,7 @@ if ($projects->have_posts()) : ?>
         <div class="grid grid--3" data-stagger>
             <?php while ($projects->have_posts()) : $projects->the_post();
                 $logo = bnwp_get_meta('_bnwp_logo');
-                $lead = bnwp_get_meta('_bnwp_lead');
+                $lead = bnwp_get_meta_i18n('_bnwp_lead');
             ?>
             <article class="card reveal">
                 <div class="card__top">
@@ -125,9 +120,6 @@ if ($projects->have_posts()) : ?>
 
 <?php
 $recent_args = array('post_type' => 'post', 'posts_per_page' => 4, 'no_found_rows' => true);
-if (bnwp_lang_has_content('post')) {
-    $recent_args['meta_query'] = array(bnwp_lang_meta_query());
-}
 $recent = new WP_Query($recent_args);
 if ($recent->have_posts()) : ?>
 <section class="section">
@@ -168,9 +160,6 @@ $people_args = array(
     'no_found_rows'  => true,
     'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot')),
 );
-if (bnwp_lang_has_content('persona')) {
-    $people_args['meta_query'] = array(bnwp_lang_meta_query());
-}
 $people = new WP_Query($people_args);
 if ($people->have_posts()) : ?>
 <section class="section section--sunken">
@@ -189,7 +178,7 @@ if ($people->have_posts()) : ?>
         <div class="grid grid--4" data-stagger>
             <?php while ($people->have_posts()) : $people->the_post();
                 $username = bnwp_get_meta('_bnwp_username');
-                $role     = bnwp_get_meta('_bnwp_role');
+                $role     = bnwp_get_meta_i18n('_bnwp_role');
             ?>
             <a class="person reveal" href="<?php echo esc_url(bnwp_person_url()); ?>"<?php echo bnwp_person_is_external() ? ' rel="noopener"' : ''; ?>>
                 <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(

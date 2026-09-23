@@ -58,6 +58,12 @@ function bnwp_langs() {
     return explode(',', BNWP_LANGS);
 }
 
+/**
+ * The language being viewed.
+ *
+ * One record now carries both languages, so this depends only on the URL —
+ * it no longer has to infer a language from the post being shown.
+ */
 function bnwp_current_language() {
     static $cached = null;
     if ($cached !== null) {
@@ -68,19 +74,6 @@ function bnwp_current_language() {
         $requested = sanitize_key(wp_unslash($_GET['lang']));
         if (in_array($requested, bnwp_langs(), true)) {
             return $cached = $requested;
-        }
-    }
-
-    if (is_singular()) {
-        $post = get_queried_object();
-        if ($post instanceof WP_Post) {
-            $meta = sanitize_key(get_post_meta($post->ID, '_bnwp_language', true));
-            if (in_array($meta, bnwp_langs(), true)) {
-                return $cached = $meta;
-            }
-            if (substr($post->post_name, -3) === '-en') {
-                return $cached = 'en';
-            }
         }
     }
 
@@ -128,158 +121,137 @@ function bnwp_lang_arg($url, $lang = null) {
     return $lang === 'en' ? add_query_arg('lang', 'en', $url) : remove_query_arg('lang', $url);
 }
 
-/** Resolve a page by base slug, preferring the "-en" twin in English. */
+/** A page by slug, in the requested language. One page serves both. */
 function bnwp_page_url($base_slug, $lang = null) {
     $lang = $lang ? $lang : bnwp_current_language();
-    $slug = $lang === 'en' ? $base_slug . '-en' : $base_slug;
-    $page = get_page_by_path($slug, OBJECT, 'page');
+    $page = get_page_by_path($base_slug, OBJECT, 'page');
+    $url  = $page ? get_permalink($page) : home_url('/' . trim($base_slug, '/') . '/');
 
-    if (!$page && $lang === 'en') {
-        $page = get_page_by_path($base_slug, OBJECT, 'page');
-    }
-
-    $url = $page ? get_permalink($page) : home_url('/' . trim($base_slug, '/') . '/');
     return bnwp_lang_arg($url, $lang);
 }
 
 /** The equivalent of the current view in the other language. */
+/**
+ * The same view in the other language.
+ *
+ * One record serves both languages, so this is now just the current URL with
+ * the language flag flipped. It can no longer fail to find a twin, which is
+ * what used to drop readers back onto the homepage.
+ */
 function bnwp_translation_url($target) {
     $target = $target === 'en' ? 'en' : 'bn';
 
-    if (is_front_page()) {
-        return bnwp_lang_arg(home_url('/'), $target);
+    $request = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
+    $current = home_url(strtok($request, '?'));
+
+    $query = array();
+    if (!empty($_SERVER['QUERY_STRING'])) {
+        parse_str(wp_unslash($_SERVER['QUERY_STRING']), $query);
+    }
+    unset($query['lang']);
+
+    if ($query) {
+        $current = add_query_arg(array_map('sanitize_text_field', $query), $current);
     }
 
-    if (is_singular()) {
-        $post = get_queried_object();
-        if ($post instanceof WP_Post && $post->post_name !== '') {
-            $slug = $post->post_name;
-            $twin = $target === 'en'
-                ? (substr($slug, -3) === '-en' ? $slug : $slug . '-en')
-                : preg_replace('/-en$/', '', $slug);
-
-            $match = get_page_by_path($twin, OBJECT, get_post_type($post));
-            return bnwp_lang_arg(get_permalink($match ? $match : $post), $target);
-        }
-    }
-
-    if (is_post_type_archive('project')) {
-        return bnwp_lang_arg(get_post_type_archive_link('project'), $target);
-    }
-
-    if (is_tax('team')) {
-        $link = get_term_link(get_queried_object());
-        return bnwp_lang_arg(is_wp_error($link) ? home_url('/persona/') : $link, $target);
-    }
-
-    if (is_post_type_archive('persona')) {
-        return bnwp_lang_arg(get_post_type_archive_link('persona'), $target);
-    }
-
-    if (is_home()) {
-        return bnwp_page_url('posts', $target);
-    }
-
-    if (is_search()) {
-        return add_query_arg('s', get_search_query(), bnwp_lang_arg(home_url('/'), $target));
-    }
-
-    return bnwp_lang_arg(home_url('/'), $target);
+    return bnwp_lang_arg($current, $target);
 }
 
 /** The meta clause that limits a listing to the current language. */
-function bnwp_lang_meta_query($lang = null) {
-    $lang = $lang ? $lang : bnwp_current_language();
-    return array(
-        'relation' => 'OR',
-        array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
-        array('key' => '_bnwp_language', 'compare' => 'NOT EXISTS'),
-    );
-}
-
-/**
- * Is there any content of this post type in the current language?
+/* -------------------------------------------------------------------------
+ * 2b. Paired English fields
  *
- * Content is authored as separate Bengali and English records. Until the
- * English twins exist, filtering strictly by language empties the English
- * site — no projects, no team. So the filter only applies where there is
- * something to show; otherwise the reader sees the Bengali records rather
- * than a blank page.
- */
-function bnwp_lang_has_content($post_type, $lang = null) {
-    static $cache = array();
+ * A post carries both languages: the native title, body and excerpt hold the
+ * Bengali, and matching _bnwp_*_en fields hold the English. Reading happens
+ * through three filters, so templates keep calling the_title(), the_content()
+ * and the ordinary meta helpers.
+ *
+ * An empty English field falls back to the Bengali, so a half-translated
+ * record is never a blank page.
+ * ---------------------------------------------------------------------- */
 
-    $lang = $lang ? $lang : bnwp_current_language();
-    $key  = $post_type . '|' . $lang;
+/** Meta suffixed "_en" when viewing English, otherwise the plain key. */
+function bnwp_get_meta_i18n($key, $post_id = null, $default = '') {
+    $post_id = $post_id ? $post_id : get_the_ID();
 
-    if (isset($cache[$key])) {
-        return $cache[$key];
+    if (bnwp_is_en()) {
+        $english = get_post_meta($post_id, $key . '_en', true);
+        if ($english !== '') {
+            return $english;
+        }
     }
-
-    // Not the main query, so bnwp_filter_main_query() ignores it — no recursion.
-    $probe = new WP_Query(array(
-        'post_type'              => $post_type,
-        'post_status'            => 'publish',
-        'posts_per_page'         => 1,
-        'fields'                 => 'ids',
-        'no_found_rows'          => true,
-        'update_post_meta_cache' => false,
-        'update_post_term_cache' => false,
-        'meta_query'             => array(
-            array('key' => '_bnwp_language', 'value' => $lang, 'compare' => '='),
-        ),
-    ));
-
-    return $cache[$key] = !empty($probe->posts);
+    return bnwp_get_meta($key, $post_id, $default);
 }
 
-/**
- * English pages use an "-en" slug, which would miss their page-{slug}.php
- * template — "posts-en" would fall through to page.php and render blank.
- * Let a twin borrow its Bengali counterpart's template.
- */
-function bnwp_twin_page_template($template) {
-    if (!is_page()) {
-        return $template;
+/** Does this record have any English at all? Used by the admin column. */
+function bnwp_has_english($post_id) {
+    foreach (array('_bnwp_title_en', '_bnwp_body_en') as $key) {
+        if (trim((string) get_post_meta($post_id, $key, true)) !== '') {
+            return true;
+        }
     }
-
-    $post = get_queried_object();
-    if (!$post instanceof WP_Post || substr($post->post_name, -3) !== '-en') {
-        return $template;
-    }
-
-    $found = locate_template('page-' . substr($post->post_name, 0, -3) . '.php');
-    return $found ? $found : $template;
+    return false;
 }
-add_filter('template_include', 'bnwp_twin_page_template');
 
-/** Restrict main-query listings to the current language, where that language has content. */
-function bnwp_filter_main_query($query) {
-    if (is_admin() || !$query->is_main_query()) {
-        return;
+function bnwp_filter_title($title, $post_id = null) {
+    if (!bnwp_is_en() || is_admin() || !$post_id) {
+        return $title;
     }
-
-    if ($query->is_post_type_archive('project')) {
-        $type = 'project';
-    } elseif ($query->is_post_type_archive('persona') || $query->is_tax('team')) {
-        $type = 'persona';
-    } elseif ($query->is_home()) {
-        $type = 'post';
-    } elseif ($query->is_search()) {
-        $type = null; // search spans everything; always filter
-    } else {
-        return;
-    }
-
-    if ($type !== null && !bnwp_lang_has_content($type)) {
-        return;
-    }
-
-    $meta_query   = (array) $query->get('meta_query');
-    $meta_query[] = bnwp_lang_meta_query();
-    $query->set('meta_query', $meta_query);
+    $english = get_post_meta($post_id, '_bnwp_title_en', true);
+    return $english !== '' ? $english : $title;
 }
-add_action('pre_get_posts', 'bnwp_filter_main_query');
+add_filter('the_title', 'bnwp_filter_title', 10, 2);
+
+function bnwp_filter_single_title($title) {
+    if (!bnwp_is_en() || is_admin() || !is_singular()) {
+        return $title;
+    }
+    $english = get_post_meta(get_queried_object_id(), '_bnwp_title_en', true);
+    return $english !== '' ? $english : $title;
+}
+add_filter('single_post_title', 'bnwp_filter_single_title');
+
+function bnwp_filter_content($content) {
+    if (!bnwp_is_en() || is_admin()) {
+        return $content;
+    }
+
+    $post_id = get_the_ID();
+    if (!$post_id) {
+        return $content;
+    }
+
+    $english = get_post_meta($post_id, '_bnwp_body_en', true);
+    if (trim((string) $english) === '') {
+        return $content;
+    }
+
+    // Run the usual formatting by hand rather than re-entering the_content.
+    return wpautop(do_shortcode(wp_kses_post($english)));
+}
+add_filter('the_content', 'bnwp_filter_content', 9);
+
+function bnwp_filter_excerpt($excerpt, $post = null) {
+    if (!bnwp_is_en() || is_admin()) {
+        return $excerpt;
+    }
+
+    $post_id = $post instanceof WP_Post ? $post->ID : get_the_ID();
+    $english = get_post_meta($post_id, '_bnwp_excerpt_en', true);
+    if ($english !== '') {
+        return $english;
+    }
+
+    // No English excerpt, but an English body: summarise that instead of
+    // handing back a Bengali excerpt on an English page.
+    $body = get_post_meta($post_id, '_bnwp_body_en', true);
+    if (trim((string) $body) !== '') {
+        return wp_trim_words(wp_strip_all_tags($body), 40, '…');
+    }
+
+    return $excerpt;
+}
+add_filter('get_the_excerpt', 'bnwp_filter_excerpt', 10, 2);
 
 /**
  * Menu links, fixed in one place.
@@ -559,7 +531,15 @@ function bnwp_meta_keys() {
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link',
+        // the English half of each record
+        '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
+        '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
     );
+}
+
+/** Meta holding rich text, which must keep its markup through sanitising. */
+function bnwp_richtext_meta_keys() {
+    return array('_bnwp_body_en');
 }
 
 /**
@@ -610,20 +590,14 @@ function bnwp_personas_by_usernames($csv, $limit = 12) {
         return null;
     }
 
-    $meta_query = array(
-        'relation' => 'AND',
-        array('key' => '_bnwp_username', 'value' => $names, 'compare' => 'IN'),
-    );
-    if (bnwp_lang_has_content('persona')) {
-        $meta_query[] = bnwp_lang_meta_query();
-    }
-
     $q = new WP_Query(array(
         'post_type'      => 'persona',
         'posts_per_page' => $limit,
         'no_found_rows'  => true,
         'orderby'        => 'post__in',
-        'meta_query'     => $meta_query,
+        'meta_query'     => array(
+            array('key' => '_bnwp_username', 'value' => $names, 'compare' => 'IN'),
+        ),
     ));
 
     return $q->have_posts() ? $q : null;
@@ -1538,8 +1512,113 @@ function bnwp_add_meta_boxes() {
     add_meta_box('bnwp_project', __('Project Details', 'bnwp'), 'bnwp_project_box', 'project', 'normal', 'high');
     add_meta_box('bnwp_persona', __('Team Member Details', 'bnwp'), 'bnwp_persona_box', 'persona', 'normal', 'high');
     add_meta_box('bnwp_post', __('BNWP Post Details', 'bnwp'), 'bnwp_post_box', 'post', 'side', 'default');
+
+    foreach (array('post', 'page', 'project', 'persona') as $type) {
+        add_meta_box(
+            'bnwp_english',
+            __('English version', 'bnwp'),
+            'bnwp_english_box',
+            $type,
+            'normal',
+            'default'
+        );
+    }
 }
 add_action('add_meta_boxes', 'bnwp_add_meta_boxes');
+
+/**
+ * The English half of the record.
+ *
+ * The Bengali side stays exactly where WordPress puts it — the normal title
+ * box and editor. This panel holds the English equivalents. Anything left
+ * blank falls back to the Bengali, so a partial translation is safe.
+ */
+function bnwp_english_box($post) {
+    wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
+
+    $has_body = in_array($post->post_type, array('post', 'page', 'project'), true);
+    ?>
+    <p class="description" style="margin:0 0 14px;">
+        <?php esc_html_e('Leave a field blank to fall back to the Bengali. Readers see this when the site is viewed in English.', 'bnwp'); ?>
+    </p>
+
+    <p class="bnwp-field">
+        <label for="_bnwp_title_en"><strong><?php esc_html_e('English title', 'bnwp'); ?></strong></label>
+        <input class="widefat" type="text" id="_bnwp_title_en" name="_bnwp_title_en"
+               value="<?php echo esc_attr(bnwp_get_meta('_bnwp_title_en', $post->ID)); ?>"
+               style="font-size:1.4em;padding:6px 8px;">
+    </p>
+
+    <?php if ($has_body) : ?>
+        <p class="bnwp-field" style="margin-bottom:4px;">
+            <label for="_bnwp_body_en"><strong><?php esc_html_e('English body', 'bnwp'); ?></strong></label>
+        </p>
+        <?php
+        wp_editor(
+            bnwp_get_meta('_bnwp_body_en', $post->ID),
+            '_bnwp_body_en',
+            array(
+                'textarea_name' => '_bnwp_body_en',
+                'textarea_rows' => 14,
+                'media_buttons' => true,
+                'teeny'         => false,
+                'quicktags'     => true,
+            )
+        );
+        ?>
+
+        <p class="bnwp-field" style="margin-top:14px;">
+            <label for="_bnwp_excerpt_en"><strong><?php esc_html_e('English excerpt', 'bnwp'); ?></strong></label>
+            <textarea class="widefat" rows="2" id="_bnwp_excerpt_en" name="_bnwp_excerpt_en"><?php
+                echo esc_textarea(bnwp_get_meta('_bnwp_excerpt_en', $post->ID));
+            ?></textarea>
+        </p>
+    <?php endif; ?>
+
+    <?php if ($post->post_type === 'project') : ?>
+        <?php bnwp_field_text(__('English lead / summary', 'bnwp'), '_bnwp_lead_en', bnwp_get_meta('_bnwp_lead_en', $post->ID)); ?>
+    <?php endif; ?>
+
+    <?php if ($post->post_type === 'persona') : ?>
+        <?php
+        bnwp_field_text(__('English role', 'bnwp'), '_bnwp_role_en', bnwp_get_meta('_bnwp_role_en', $post->ID));
+        bnwp_field_text(__('English location', 'bnwp'), '_bnwp_location_en', bnwp_get_meta('_bnwp_location_en', $post->ID));
+        bnwp_field_text(__('English short bio', 'bnwp'), '_bnwp_bio_en', bnwp_get_meta('_bnwp_bio_en', $post->ID));
+        ?>
+    <?php endif; ?>
+    <?php
+}
+
+/** An "EN" column so it is obvious at a glance what still needs translating. */
+function bnwp_english_column($columns) {
+    $out = array();
+    foreach ($columns as $key => $label) {
+        $out[$key] = $label;
+        if ($key === 'title') {
+            $out['bnwp_en'] = __('EN', 'bnwp');
+        }
+    }
+    return $out;
+}
+
+function bnwp_english_column_value($column, $post_id) {
+    if ($column !== 'bnwp_en') {
+        return;
+    }
+    echo bnwp_has_english($post_id)
+        ? '<span title="' . esc_attr__('Has an English version', 'bnwp') . '" style="color:#2E7D5B;font-size:16px;">&#10003;</span>'
+        : '<span title="' . esc_attr__('Bengali only', 'bnwp') . '" style="color:#b0aca4;">&mdash;</span>';
+}
+
+// Pages use their own hook names; everything else follows the post pattern.
+add_filter('manage_pages_columns', 'bnwp_english_column');
+add_action('manage_pages_custom_column', 'bnwp_english_column_value', 10, 2);
+
+foreach (array('post', 'project', 'persona') as $bnwp_type) {
+    add_filter("manage_{$bnwp_type}_posts_columns", 'bnwp_english_column');
+    add_action("manage_{$bnwp_type}_posts_custom_column", 'bnwp_english_column_value', 10, 2);
+}
+unset($bnwp_type);
 
 function bnwp_field_text($label, $name, $value, $type = 'text') {
     printf(
@@ -1590,15 +1669,6 @@ function bnwp_field_media($label, $name, $value) {
         </div>
     </div>
     <?php
-}
-
-function bnwp_field_language($post_id) {
-    bnwp_field_select(
-        __('Language', 'bnwp'),
-        '_bnwp_language',
-        bnwp_get_meta('_bnwp_language', $post_id, 'bn'),
-        array('bn' => 'বাংলা (bn)', 'en' => 'English (en)')
-    );
 }
 
 /** Every distinct person on the site, keyed by wiki username. */
@@ -1662,8 +1732,6 @@ function bnwp_project_box($post) {
         bnwp_get_meta('_bnwp_jury', $post->ID),
         __('Leave empty to fall back to everyone in the Jury team.', 'bnwp')
     );
-
-    bnwp_field_language($post->ID);
 }
 
 function bnwp_persona_box($post) {
@@ -1679,13 +1747,11 @@ function bnwp_persona_box($post) {
     echo '<p class="description" style="margin-top:-8px;">'
         . esc_html__('For guest or external jurors who have no page here: their cards link straight to this address instead of to a local profile.', 'bnwp')
         . '</p>';
-    bnwp_field_language($post->ID);
 }
 
 function bnwp_post_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_text(__('Author wiki username', 'bnwp'), '_bnwp_user', bnwp_get_meta('_bnwp_user', $post->ID));
-    bnwp_field_language($post->ID);
 }
 
 function bnwp_save_meta($post_id) {
@@ -1715,10 +1781,18 @@ function bnwp_save_meta($post_id) {
             continue;
         }
 
+        if (in_array($key, bnwp_richtext_meta_keys(), true)) {
+            // the English body keeps its markup, filtered the same way a post is
+            update_post_meta($post_id, $key, wp_kses_post($raw));
+            continue;
+        }
+
         if ($key === '_bnwp_status') {
             $value = array_key_exists($raw, bnwp_project_statuses()) ? $raw : '';
         } elseif ($key === '_bnwp_language') {
             $value = in_array($raw, bnwp_langs(), true) ? $raw : 'bn';
+        } elseif ($key === '_bnwp_excerpt_en') {
+            $value = sanitize_textarea_field($raw);
         } elseif ($key === '_bnwp_email') {
             $value = sanitize_email($raw);
         } elseif (in_array($key, $url_keys, true)) {

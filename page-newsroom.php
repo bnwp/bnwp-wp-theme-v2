@@ -10,9 +10,6 @@ if (!defined('ABSPATH')) { exit; }
 get_header();
 
 $args = array('post_type' => 'post', 'posts_per_page' => 6, 'no_found_rows' => true);
-if (bnwp_lang_has_content('post')) {
-    $args['meta_query'] = array(bnwp_lang_meta_query());
-}
 $recent = new WP_Query($args);
 ?>
 

@@ -10,7 +10,7 @@ while (have_posts()) : the_post();
     $logo    = bnwp_get_meta('_bnwp_logo');
     $cover   = bnwp_get_meta('_bnwp_cover');
     $wiki    = bnwp_get_meta('_bnwp_wiki');
-    $lead    = bnwp_get_meta('_bnwp_lead');
+    $lead    = bnwp_get_meta_i18n('_bnwp_lead');
     $status  = bnwp_get_meta('_bnwp_status');
     $archive = get_post_type_archive_link('project');
 ?>
@@ -111,9 +111,6 @@ while (have_posts()) : the_post();
                         'no_found_rows'  => true,
                         'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'jury')),
                     );
-                    if (bnwp_lang_has_content('persona')) {
-                        $jury_args['meta_query'] = array(bnwp_lang_meta_query());
-                    }
                     $probe = new WP_Query($jury_args);
                     $jury  = $probe->have_posts() ? $probe : null;
                 }
@@ -135,9 +132,6 @@ while (have_posts()) : the_post();
         'no_found_rows'  => true,
         'orderby'        => 'rand',
     );
-    if (bnwp_lang_has_content('project')) {
-        $related_args['meta_query'] = array(bnwp_lang_meta_query());
-    }
     $related = new WP_Query($related_args);
     if ($related->have_posts()) : ?>
     <section class="section section--sunken">

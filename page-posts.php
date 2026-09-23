@@ -18,9 +18,6 @@ $args = array(
     'paged'          => $paged,
     'ignore_sticky_posts' => true,
 );
-if (bnwp_lang_has_content('post')) {
-    $args['meta_query'] = array(bnwp_lang_meta_query());
-}
 $q = new WP_Query($args);
 ?>
 

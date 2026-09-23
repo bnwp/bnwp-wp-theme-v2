@@ -54,7 +54,7 @@ $teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
             <div class="grid grid--4" data-stagger>
                 <?php while (have_posts()) : the_post();
                     $username = bnwp_get_meta('_bnwp_username');
-                    $role     = bnwp_get_meta('_bnwp_role');
+                    $role     = bnwp_get_meta_i18n('_bnwp_role');
                 ?>
                 <a class="person reveal" href="<?php echo esc_url(bnwp_person_url()); ?>"<?php echo bnwp_person_is_external() ? ' rel="noopener"' : ''; ?>>
                     <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(

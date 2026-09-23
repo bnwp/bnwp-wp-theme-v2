@@ -23,7 +23,7 @@ get_header();
             <div class="grid grid--3" data-stagger>
                 <?php while (have_posts()) : the_post();
                     $logo   = bnwp_get_meta('_bnwp_logo');
-                    $lead   = bnwp_get_meta('_bnwp_lead');
+                    $lead   = bnwp_get_meta_i18n('_bnwp_lead');
                     $status = bnwp_get_meta('_bnwp_status');
                 ?>
                 <article class="card reveal">
