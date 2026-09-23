@@ -62,25 +62,25 @@
 }
 
 :root[data-theme="dark"] {
-  /* A warm charcoal with a green-grey cast, not pitch black — roughly twice
-     the luminance of a true black ground, which is easier to sit with and
-     lets the brand colours read as colour rather than as glow. */
-  --bg:            #1B1E18;
-  --bg-raised:     #242820;
-  --bg-sunken:     #15170F;
-  --ink:           #F3F0E7;
-  --ink-soft:      #B4B0A3;
-  --ink-faint:     #938E81;
-  --line:          #373B31;
-  --line-strong:   #4E5347;
+  /* Neutral grey, not pitch black and not tinted: the surfaces sit within
+     1–2 points across R/G/B, so the brand colours are the only colour on
+     screen. Roughly twice the luminance of a true black ground. */
+  --bg:            #1A1A1B;
+  --bg-raised:     #242426;
+  --bg-sunken:     #131314;
+  --ink:           #F2F1EF;
+  --ink-soft:      #B3B2AE;
+  --ink-faint:     #918F8B;
+  --line:          #353537;
+  --line-strong:   #4C4C4F;
 
   --accent:        #79BEE4;
   --accent-hover:  #A3D6F0;
-  --accent-soft:   #1C3242;
+  --accent-soft:   #1B3040;
   --accent-2:      #79CFA6;
-  --accent-2-soft: #183121;
+  --accent-2-soft: #162E20;
   --accent-3:      #F2A19B;
-  --accent-3-soft: #38211D;
+  --accent-3-soft: #361F1C;
   --on-accent:     #07131B;
 
   --chip-live-ink: #A6E6C8;
@@ -552,6 +552,29 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .person__handle { font-size: .875rem; color: var(--ink-soft); }
 .person__role { font-size: .875rem; color: var(--accent-2); }
 
+/* organiser / jury lists in the project sidebar */
+.peoplelist { display: grid; gap: .35rem; }
+.peoplelist__row {
+  display: flex; align-items: center; gap: .75rem;
+  min-height: 48px; padding: .4rem .5rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none; color: var(--ink);
+  transition: background var(--dur) var(--ease);
+}
+.peoplelist__row:hover { background: var(--bg-sunken); color: var(--ink); }
+.peoplelist__avatar {
+  width: 44px; height: 44px; flex: none;
+  border-radius: 999px; object-fit: cover;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+}
+.peoplelist__text { display: grid; min-width: 0; }
+.peoplelist__name { font-size: 1rem; line-height: 1.3; }
+.peoplelist__role {
+  font-size: .8125rem; color: var(--ink-soft); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* --- 11. Post list ------------------------------------------------------ */
 
 .postlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
@@ -579,6 +602,35 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .prose h2 { margin-top: 1.8em; font-size: var(--step-3); }
 .prose h3 { margin-top: 1.5em; }
 .prose img, .prose figure { border-radius: var(--radius-sm); }
+
+/* Project cover: centred, never wider than its column, capped in height so a
+   tall portrait image cannot push the whole page down on a phone. */
+.cover {
+  margin: 0 0 2rem;
+}
+.cover img,
+.project__cover {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 62vh;
+  object-fit: cover;
+  object-position: center;
+  margin-inline: auto;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.cover figcaption {
+  margin-top: .6rem;
+  font-size: .875rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+@media (max-width: 639px) {
+  .cover { margin-bottom: 1.5rem; }
+  .cover img, .project__cover { max-height: 46vh; border-radius: var(--radius-sm); }
+}
 .prose figcaption { font-size: .875rem; color: var(--ink-soft); text-align: center; margin-top: .5rem; }
 .prose blockquote {
   margin: 1.6em 0; padding: .25em 0 .25em 1.25em;

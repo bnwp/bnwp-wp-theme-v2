@@ -61,8 +61,13 @@ while (have_posts()) : the_post();
         <div class="wrap layout-aside">
             <div>
                 <?php if ($cover) : ?>
-                    <figure style="margin:0 0 2rem;">
-                        <?php bnwp_image($cover, array('w' => 1000, 'alt' => get_the_title(), 'class' => 'project__cover', 'fit' => 'cover')); ?>
+                    <figure class="cover">
+                        <?php bnwp_image($cover, array(
+                            'w'     => 960,
+                            'alt'   => get_the_title(),
+                            'class' => 'project__cover',
+                            'fit'   => 'cover',
+                        )); ?>
                     </figure>
                 <?php endif; ?>
 
@@ -88,36 +93,34 @@ while (have_posts()) : the_post();
                     </dl>
                 </div>
 
+                <?php $organisers = bnwp_personas_by_usernames(bnwp_get_meta('_bnwp_organisers')); ?>
+                <?php if ($organisers) : ?>
+                <div class="panel">
+                    <h2 class="panel__title"><?php echo esc_html(bnwp_text('আয়োজক', 'Organisers')); ?></h2>
+                    <?php bnwp_person_rows($organisers); ?>
+                </div>
+                <?php endif; ?>
+
                 <?php
-                $jury_args = array(
-                    'post_type'      => 'persona',
-                    'posts_per_page' => 6,
-                    'no_found_rows'  => true,
-                    'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'jury')),
-                );
-                if (bnwp_lang_has_content('persona')) {
-                    $jury_args['meta_query'] = array(bnwp_lang_meta_query());
+                // Named jury for this project; otherwise everyone in the Jury team.
+                $jury = bnwp_personas_by_usernames(bnwp_get_meta('_bnwp_jury'));
+                if (!$jury) {
+                    $jury_args = array(
+                        'post_type'      => 'persona',
+                        'posts_per_page' => 6,
+                        'no_found_rows'  => true,
+                        'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'jury')),
+                    );
+                    if (bnwp_lang_has_content('persona')) {
+                        $jury_args['meta_query'] = array(bnwp_lang_meta_query());
+                    }
+                    $probe = new WP_Query($jury_args);
+                    $jury  = $probe->have_posts() ? $probe : null;
                 }
-                $jury = new WP_Query($jury_args);
-                if ($jury->have_posts()) : ?>
+                if ($jury) : ?>
                 <div class="panel">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
-                    <div class="stack" style="--flow:.9rem;">
-                        <?php while ($jury->have_posts()) : $jury->the_post(); ?>
-                            <a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>" style="display:flex;gap:.75rem;align-items:center;text-decoration:none;color:var(--ink);">
-                                <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
-                                    'w' => 88, 'h' => 88, 'alt' => '',
-                                    'class' => 'person__avatar', 'fit' => 'cover',
-                                )); ?>
-                                <span>
-                                    <span style="display:block;"><?php the_title(); ?></span>
-                                    <?php $u = bnwp_get_meta('_bnwp_username'); if ($u) : ?>
-                                        <span class="person__handle">@<?php echo esc_html($u); ?></span>
-                                    <?php endif; ?>
-                                </span>
-                            </a>
-                        <?php endwhile; wp_reset_postdata(); ?>
-                    </div>
+                    <?php bnwp_person_rows($jury); ?>
                 </div>
                 <?php endif; ?>
             </aside>

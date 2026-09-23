@@ -329,15 +329,32 @@ function bnwp_avatar_placeholder() {
 }
 
 /**
+ * Commons serves thumbnails only at a fixed set of widths; anything else is
+ * a 400, which renders as a broken image. Snap up to the next allowed size.
+ * Verified against upload.wikimedia.org — the set is global, not per file.
+ */
+function bnwp_commons_width($width) {
+    $allowed = array(120, 250, 500, 960, 1280, 1920);
+    $width   = max(1, (int) $width);
+
+    foreach ($allowed as $size) {
+        if ($size >= $width) {
+            return $size;
+        }
+    }
+    return end($allowed);
+}
+
+/**
  * Rewrite a Wikimedia Commons file URL to a width-constrained thumbnail.
  * Returns other URLs untouched.
  */
 function bnwp_commons_thumb($url, $width = 480) {
-    $width = max(64, (int) $width);
-
     if (strpos($url, 'upload.wikimedia.org') === false) {
         return $url;
     }
+
+    $width = bnwp_commons_width($width);
 
     // Already a thumbnail: swap the width prefix on the last segment.
     if (strpos($url, '/thumb/') !== false) {
@@ -397,10 +414,10 @@ function bnwp_image($url, $args = array()) {
 
     $src = bnwp_img_url($url, $a['w'], $a['fallback']);
 
-    // 1x / 2x for Commons-hosted files, which can be re-thumbed at any width.
+    // 1x / 2x for Commons-hosted files, both snapped to a servable width.
     $srcset = '';
     if (strpos($src, 'upload.wikimedia.org') !== false) {
-        $x2 = bnwp_commons_thumb($url, $a['w'] * 2);
+        $x2 = bnwp_commons_thumb($url, bnwp_commons_width($a['w']) * 2);
         if ($x2 !== $src) {
             $srcset = esc_url($src) . ' 1x, ' . esc_url($x2) . ' 2x';
         }
@@ -433,7 +450,72 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
+        '_bnwp_organisers', '_bnwp_jury',
     );
+}
+
+/** Meta keys stored as a comma-separated list rather than a single value. */
+function bnwp_list_meta_keys() {
+    return array('_bnwp_organisers', '_bnwp_jury');
+}
+
+/**
+ * The people named on a project, looked up by wiki username.
+ *
+ * Usernames are stored rather than post IDs because the Bengali and English
+ * records for one person are two different posts — the username is the only
+ * identifier shared by both, so one setting serves either language.
+ */
+function bnwp_personas_by_usernames($csv, $limit = 12) {
+    $names = array_values(array_filter(array_map('trim', explode(',', (string) $csv))));
+    if (!$names) {
+        return null;
+    }
+
+    $meta_query = array(
+        'relation' => 'AND',
+        array('key' => '_bnwp_username', 'value' => $names, 'compare' => 'IN'),
+    );
+    if (bnwp_lang_has_content('persona')) {
+        $meta_query[] = bnwp_lang_meta_query();
+    }
+
+    $q = new WP_Query(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => $limit,
+        'no_found_rows'  => true,
+        'orderby'        => 'post__in',
+        'meta_query'     => $meta_query,
+    ));
+
+    return $q->have_posts() ? $q : null;
+}
+
+/** A compact list of people, used for the organiser and jury panels. */
+function bnwp_person_rows($query) {
+    if (!$query) {
+        return;
+    }
+    echo '<div class="peoplelist">';
+    while ($query->have_posts()) {
+        $query->the_post();
+        $username = bnwp_get_meta('_bnwp_username');
+        $role     = bnwp_get_meta('_bnwp_role');
+        printf('<a class="peoplelist__row" href="%s">', esc_url(bnwp_lang_arg(get_permalink())));
+        bnwp_image(bnwp_get_meta('_bnwp_img'), array(
+            'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
+        ));
+        echo '<span class="peoplelist__text">';
+        printf('<span class="peoplelist__name">%s</span>', esc_html(get_the_title()));
+        if ($role !== '') {
+            printf('<span class="peoplelist__role">%s</span>', esc_html($role));
+        } elseif ($username !== '') {
+            printf('<span class="peoplelist__role">@%s</span>', esc_html($username));
+        }
+        echo '</span></a>';
+    }
+    echo '</div>';
+    wp_reset_postdata();
 }
 
 function bnwp_project_statuses() {
@@ -1204,6 +1286,47 @@ function bnwp_field_language($post_id) {
     );
 }
 
+/** Every distinct person on the site, keyed by wiki username. */
+function bnwp_persona_choices() {
+    $people = get_posts(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => -1,
+        'post_status'    => array('publish', 'draft'),
+        'orderby'        => 'title',
+        'order'          => 'ASC',
+    ));
+
+    $choices = array();
+    foreach ($people as $person) {
+        $username = get_post_meta($person->ID, '_bnwp_username', true);
+        if ($username === '' || isset($choices[$username])) {
+            continue; // one entry per person, not one per language record
+        }
+        $choices[$username] = $person->post_title . ' (@' . $username . ')';
+    }
+    return $choices;
+}
+
+function bnwp_field_people($label, $name, $value, $help) {
+    $selected = array_filter(array_map('trim', explode(',', (string) $value)));
+    $choices  = bnwp_persona_choices();
+    ?>
+    <div class="bnwp-field">
+        <label for="<?php echo esc_attr($name); ?>"><?php echo esc_html($label); ?></label>
+        <select class="widefat" id="<?php echo esc_attr($name); ?>" name="<?php echo esc_attr($name); ?>[]"
+                multiple size="<?php echo esc_attr(min(10, max(4, count($choices)))); ?>">
+            <?php foreach ($choices as $username => $text) : ?>
+                <option value="<?php echo esc_attr($username); ?>"
+                    <?php echo in_array($username, $selected, true) ? 'selected' : ''; ?>>
+                    <?php echo esc_html($text); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php echo esc_html($help); ?></p>
+    </div>
+    <?php
+}
+
 function bnwp_project_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_media(__('Logo', 'bnwp'), '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
@@ -1211,6 +1334,20 @@ function bnwp_project_box($post) {
     bnwp_field_text(__('Wiki URL', 'bnwp'), '_bnwp_wiki', bnwp_get_meta('_bnwp_wiki', $post->ID), 'url');
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
+
+    bnwp_field_people(
+        __('Organisers', 'bnwp'),
+        '_bnwp_organisers',
+        bnwp_get_meta('_bnwp_organisers', $post->ID),
+        __('Hold Ctrl (or Cmd) to select several. Chosen by wiki username, so the same selection works for the Bengali and English versions of this project.', 'bnwp')
+    );
+    bnwp_field_people(
+        __('Jury / reviewers', 'bnwp'),
+        '_bnwp_jury',
+        bnwp_get_meta('_bnwp_jury', $post->ID),
+        __('Leave empty to fall back to everyone in the Jury team.', 'bnwp')
+    );
+
     bnwp_field_language($post->ID);
 }
 
@@ -1251,6 +1388,13 @@ function bnwp_save_meta($post_id) {
             continue;
         }
         $raw = wp_unslash($_POST[$key]);
+
+        if (in_array($key, bnwp_list_meta_keys(), true)) {
+            $items = is_array($raw) ? $raw : explode(',', (string) $raw);
+            $items = array_filter(array_map('sanitize_text_field', array_map('trim', $items)));
+            update_post_meta($post_id, $key, implode(', ', array_unique($items)));
+            continue;
+        }
 
         if ($key === '_bnwp_status') {
             $value = array_key_exists($raw, bnwp_project_statuses()) ? $raw : '';
