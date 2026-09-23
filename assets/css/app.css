@@ -400,7 +400,18 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 .hero { padding-block: clamp(2.25rem, 6vw, 4rem) clamp(2.5rem, 6vw, 4rem); }
 
-.hero h1 { margin-bottom: .4em; max-width: 20ch; }
+/* The showcase and the intro are siblings in either order, so the space
+   between them belongs to the container, not to one of their margins. */
+.hero > .wrap {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2.25rem, 6vw, 3.5rem);
+}
+
+.hero h1 { margin-bottom: .4em; }
+/* A measure cap helps a wide column and hurts a narrow one — Bengali
+   headlines broke into four ragged lines on a phone. */
+@media (min-width: 720px) { .hero h1 { max-width: 20ch; } }
 
 /* the description runs the full measure rather than being squeezed into a column */
 .hero__lead {
@@ -411,10 +422,9 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 }
 .hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
 
-/* mark + impact numbers share the row under the intro */
+/* mark + impact numbers share a row; the container supplies the gap */
 .hero__showcase {
   display: grid; gap: 2rem;
-  margin-top: clamp(2.25rem, 5vw, 3.25rem);
   align-items: center;
 }
 @media (min-width: 880px) {
