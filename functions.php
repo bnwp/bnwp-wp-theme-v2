@@ -1369,7 +1369,7 @@ function bnwp_field_media($label, $name, $value) {
                 <?php esc_html_e('Clear', 'bnwp'); ?>
             </button>
         </div>
-        <p class="description"><?php esc_html_e('Media Library image, or paste a Wikimedia Commons URL — it is resized to a thumbnail automatically.', 'bnwp'); ?></p>
+        <p class="description"><?php esc_html_e('Media Library image, a Wikimedia Commons file page URL, or a bare File:Name.jpg title. Commons files are resized to a servable thumbnail automatically.', 'bnwp'); ?></p>
         <div class="bnwp-media-preview<?php echo $has ? '' : ' is-hidden'; ?>">
             <img src="<?php echo esc_url($value); ?>" alt="">
         </div>
