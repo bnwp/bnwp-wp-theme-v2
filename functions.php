@@ -830,7 +830,85 @@ function bnwp_pagination() {
 }
 
 /* -------------------------------------------------------------------------
- * 9. Admin — custom fields for projects, members and posts
+ * 9. Impact numbers — editable in Appearance → Customise → Impact numbers
+ * ---------------------------------------------------------------------- */
+
+function bnwp_stats_default() {
+    return implode("\n", array(
+        '১৬ লক্ষ+ | শব্দ যোগ হয়েছে | words added',
+        '2000+ | নিবন্ধ তৈরি | articles created',
+        '100+ | চিত্র আপলোড | images uploaded',
+        '20+ | স্বেচ্ছাসেবী আয়োজক | volunteer organisers',
+        '2 | কর্মশালা | workshops',
+        '2 | টিউটোরিয়াল | tutorials',
+    ));
+}
+
+/**
+ * Parse the Customiser textarea into stat rows.
+ * One per line:  value | Bengali label | English label
+ * A purely numeric value (optionally with a trailing +) animates on scroll.
+ */
+function bnwp_stats() {
+    $raw = get_theme_mod('bnwp_stats', bnwp_stats_default());
+    $rows = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+
+        $parts = array_map('trim', explode('|', $line));
+        $value = isset($parts[0]) ? $parts[0] : '';
+        if ($value === '') {
+            continue;
+        }
+
+        $label = bnwp_is_en()
+            ? (isset($parts[2]) && $parts[2] !== '' ? $parts[2] : (isset($parts[1]) ? $parts[1] : ''))
+            : (isset($parts[1]) ? $parts[1] : '');
+
+        // "2000+" -> count up to 2000 with a "+" suffix. Anything else is shown as typed.
+        $count = null;
+        $suffix = '';
+        if (preg_match('/^(\d+)\s*(\+?)$/', $value, $m)) {
+            $count  = (int) $m[1];
+            $suffix = $m[2];
+            $value  = bnwp_num(number_format_i18n($count)) . $suffix;
+        }
+
+        $rows[] = array('value' => $value, 'count' => $count, 'suffix' => $suffix, 'label' => $label);
+    }
+
+    return $rows;
+}
+
+function bnwp_customize($wp_customize) {
+    $wp_customize->add_section('bnwp_impact', array(
+        'title'       => __('Impact numbers', 'bnwp'),
+        'priority'    => 30,
+        'description' => __('One per line: value | Bengali label | English label. A plain number such as 2000+ counts up when it scrolls into view; anything else (১৬ লক্ষ+) is shown exactly as typed.', 'bnwp'),
+    ));
+
+    $wp_customize->add_setting('bnwp_stats', array(
+        'default'           => bnwp_stats_default(),
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport'         => 'refresh',
+    ));
+
+    $wp_customize->add_control('bnwp_stats', array(
+        'label'    => __('Rows', 'bnwp'),
+        'section'  => 'bnwp_impact',
+        'type'     => 'textarea',
+        'input_attrs' => array('rows' => 8, 'style' => 'font-family:ui-monospace,monospace;'),
+    ));
+}
+add_action('customize_register', 'bnwp_customize');
+
+
+/* -------------------------------------------------------------------------
+ * 10. Admin — custom fields for projects, members and posts
  * ---------------------------------------------------------------------- */
 
 function bnwp_add_meta_boxes() {

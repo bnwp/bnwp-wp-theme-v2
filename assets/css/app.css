@@ -373,35 +373,35 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 /* --- 7. Hero ------------------------------------------------------------ */
 
-.hero { position: relative; overflow: hidden; padding-block: clamp(2.5rem, 7vw, 5rem); }
+.hero { padding-block: clamp(2.25rem, 6vw, 4rem) clamp(2.5rem, 6vw, 4rem); }
 
-.hero__inner { display: grid; gap: 2.5rem; }
-@media (min-width: 980px) {
-  .hero__inner { grid-template-columns: 1.15fr .85fr; align-items: center; gap: 4rem; }
-}
+.hero h1 { margin-bottom: .4em; max-width: 20ch; }
 
-.hero h1 { margin-bottom: .45em; }
+/* the description runs the full measure rather than being squeezed into a column */
 .hero__lead {
   font-size: var(--step-1);
   line-height: 1.85;
   color: var(--ink-soft);
-  max-width: 60ch;
+  max-width: 88ch;
 }
 .hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
 
-/* slow orbiting petals behind the hero — the one decorative flourish */
-.hero__orbit {
-  position: absolute; inset-inline-end: -12%; top: -16%;
-  width: min(62vw, 520px);
-  pointer-events: none; z-index: 0;
-  opacity: .08;
+/* mark + impact numbers share the row under the intro */
+.hero__showcase {
+  display: grid; gap: 2rem;
+  margin-top: clamp(2.25rem, 5vw, 3.25rem);
+  align-items: center;
 }
-:root[data-theme="dark"] .hero__orbit { opacity: .12; }
-.hero__orbit-spin { animation: bnwp-orbit 60s linear infinite; transform-origin: 50% 50%; }
-.hero__orbit-logo { width: 100%; height: auto; }
-.hero > * { position: relative; z-index: 1; }
+@media (min-width: 880px) {
+  .hero__showcase { grid-template-columns: minmax(200px, .62fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 4rem); }
+}
 
-@keyframes bnwp-orbit { to { transform: rotate(360deg); } }
+.hero__mark { display: grid; place-items: center; }
+.hero__mark-img {
+  width: min(62vw, 300px); height: auto;
+  transition: transform 700ms var(--ease);
+}
+.hero__mark:hover .hero__mark-img { transform: scale(1.03); }
 
 /* --- 8. Stats ----------------------------------------------------------- */
 
@@ -604,24 +604,49 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   margin-inline: auto;
 }
 .partner {
-  display: grid; place-items: center;
-  min-height: 120px; padding: 1.25rem;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .85rem;
+  min-height: 148px; padding: 1.5rem 1rem 1.25rem;
   background: var(--bg-raised);
   border: 1px solid var(--line); border-radius: var(--radius);
   overflow: hidden;
+  text-decoration: none; color: var(--ink-soft);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
 }
-/* A definite height is what keeps every logo on the same optical baseline —
+/* brand sweep, same language as the project cards */
+.partner::before {
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue), var(--brand-green));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 480ms var(--ease);
+}
+.partner:hover, .partner:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-2);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+.partner:hover::before, .partner:focus-visible::before { transform: scaleX(1); }
+
+/* A definite height keeps every logo on one optical baseline —
    `max-height: 100%` collapses against an auto-sized grid area. */
 .partner img {
   height: 58px; width: auto;
   max-width: 100%;
   object-fit: contain;
-  filter: grayscale(1); opacity: .7;
-  transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  transition: transform var(--dur) var(--ease);
 }
-.partner:hover img { filter: none; opacity: 1; }
-:root[data-theme="dark"] .partner img { filter: grayscale(1) invert(1) brightness(1.8); }
-:root[data-theme="dark"] .partner:hover img { filter: invert(1) brightness(1.8); }
+.partner:hover img { transform: scale(1.06); }
+
+/* logos are full colour; in dark mode only the flat black marks need lifting */
+:root[data-theme="dark"] .partner img { filter: brightness(1.06); }
+
+.partner__name {
+  font-size: .875rem; line-height: 1.35; text-align: center;
+  transition: color var(--dur) var(--ease);
+}
 
 /* --- 15. Footer --------------------------------------------------------- */
 
@@ -673,5 +698,4 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
     transition-duration: .001ms !important;
   }
   .reveal { opacity: 1; transform: none; }
-  .hero__orbit-spin { animation: none; }
 }

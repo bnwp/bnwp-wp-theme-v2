@@ -10,23 +10,13 @@ $lang    = bnwp_current_language();
 $persona = get_post_type_archive_link('persona');
 $project = get_post_type_archive_link('project');
 
-$stats = array(
-    array('text' => bnwp_text('১৬ লক্ষ+', '1.6M+'), 'label' => bnwp_text('শব্দ যোগ হয়েছে', 'words added')),
-    array('count' => 2000, 'suffix' => '+', 'label' => bnwp_text('নিবন্ধ তৈরি', 'articles created')),
-    array('count' => 100,  'suffix' => '+', 'label' => bnwp_text('চিত্র আপলোড', 'images uploaded')),
-    array('count' => 20,   'suffix' => '+', 'label' => bnwp_text('স্বেচ্ছাসেবী আয়োজক', 'volunteer organisers')),
-    array('count' => 2,    'suffix' => '',  'label' => bnwp_text('কর্মশালা', 'workshops')),
-    array('count' => 2,    'suffix' => '',  'label' => bnwp_text('টিউটোরিয়াল', 'tutorials')),
-);
+$stats = bnwp_stats();
 ?>
 
 <section class="hero">
-    <div class="hero__orbit" aria-hidden="true">
-        <div class="hero__orbit-spin"><?php bnwp_logo_img(520, 'hero__orbit-logo'); ?></div>
-    </div>
+    <div class="wrap">
 
-    <div class="wrap hero__inner">
-        <div>
+        <div class="hero__intro">
             <p class="eyebrow reveal"><?php echo esc_html(bnwp_text('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh')); ?></p>
 
             <h1 class="reveal"><?php echo esc_html(bnwp_text(
@@ -50,25 +40,34 @@ $stats = array(
             </div>
         </div>
 
-        <div class="stats reveal">
-            <p class="panel__title"><?php echo esc_html(bnwp_text('এখন পর্যন্ত আমাদের অবদান', 'Our impact so far')); ?></p>
-            <div class="stats__grid">
-                <?php foreach ($stats as $s) : ?>
-                    <div class="stat">
-                        <?php if (isset($s['count'])) : ?>
-                            <div class="stat__value tabular"
-                                 data-count="<?php echo esc_attr($s['count']); ?>"
-                                 data-suffix="<?php echo esc_attr($s['suffix']); ?>"><?php
-                                echo esc_html(bnwp_num(number_format_i18n($s['count'])) . $s['suffix']);
-                            ?></div>
-                        <?php else : ?>
-                            <div class="stat__value"><?php echo esc_html($s['text']); ?></div>
-                        <?php endif; ?>
-                        <p class="stat__label"><?php echo esc_html($s['label']); ?></p>
-                    </div>
-                <?php endforeach; ?>
+        <?php if ($stats) : ?>
+        <div class="hero__showcase">
+            <div class="hero__mark reveal">
+                <?php bnwp_logo_img(300, 'hero__mark-img', 'eager'); ?>
+            </div>
+
+            <div class="stats reveal">
+                <p class="panel__title"><?php echo esc_html(bnwp_text('এখন পর্যন্ত আমাদের অবদান', 'Our impact so far')); ?></p>
+                <div class="stats__grid">
+                    <?php foreach ($stats as $s) : ?>
+                        <div class="stat">
+                            <div class="stat__value tabular"<?php
+                                if ($s['count'] !== null) {
+                                    printf(
+                                        ' data-count="%d" data-suffix="%s"',
+                                        (int) $s['count'],
+                                        esc_attr($s['suffix'])
+                                    );
+                                }
+                            ?>><?php echo esc_html($s['value']); ?></div>
+                            <p class="stat__label"><?php echo esc_html($s['label']); ?></p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
+        <?php endif; ?>
+
     </div>
 </section>
 
@@ -220,23 +219,25 @@ if ($people->have_posts()) : ?>
 <section class="section">
     <div class="wrap" style="text-align:center;">
         <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_text('আমাদের অংশীদার', 'Our partners')); ?></h2>
-        <div class="partners reveal" style="margin-top:2rem;">
+        <div class="partners" data-stagger style="margin-top:2rem;">
             <?php
+            // file, name, intrinsic w, intrinsic h, url
             $partners = array(
-                array('Wikimedia_Foundation_logo_-_vertical.png', 'Wikimedia Foundation', 614, 459),
-                array('WikiNandini_text_logo_2024.png',           'WikiNandini',          1042, 240),
-                array('Wikimedia_Bangladesh_logo.png',            'Wikimedia Bangladesh',  500, 512),
-                array('Wiki_Loves_Women_South_Asia.png',          'Wiki Loves Women South Asia', 695, 353),
+                array('Wikimedia_Foundation_logo_-_vertical.png', 'Wikimedia Foundation', 614, 459, 'https://wikimediafoundation.org/'),
+                array('Wikimedia_Bangladesh_logo.png',            'Wikimedia Bangladesh',  500, 512, 'https://bd.wikimedia.org/'),
+                array('WikiNandini_text_logo_2024.png',           'WikiNandini',          1042, 240, 'https://meta.wikimedia.org/wiki/WikiNandini'),
+                array('Wiki_Loves_Women_South_Asia.png',          'Wiki Loves Women',      695, 353, 'https://meta.wikimedia.org/wiki/Wiki_Loves_Women'),
             );
             foreach ($partners as $p) :
                 $h = 58; // must match .partner img height in app.css
                 $w = (int) round($h * ($p[2] / $p[3]));
             ?>
-                <div class="partner">
+                <a class="partner reveal" href="<?php echo esc_url($p[4]); ?>" rel="noopener">
                     <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/uploads/' . $p[0]); ?>"
                          width="<?php echo esc_attr($w); ?>" height="<?php echo esc_attr($h); ?>"
                          alt="<?php echo esc_attr($p[1]); ?>" loading="lazy" decoding="async">
-                </div>
+                    <span class="partner__name"><?php echo esc_html($p[1]); ?></span>
+                </a>
             <?php endforeach; ?>
         </div>
     </div>
