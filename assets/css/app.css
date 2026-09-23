@@ -62,26 +62,29 @@
 }
 
 :root[data-theme="dark"] {
-  --bg:            #121310;
-  --bg-raised:     #1B1D19;
-  --bg-sunken:     #0C0D0B;
-  --ink:           #F2EFE6;
-  --ink-soft:      #ACA89C;
-  --ink-faint:     #817D72;
-  --line:          #2E3129;
-  --line-strong:   #434740;
+  /* A warm charcoal with a green-grey cast, not pitch black — roughly twice
+     the luminance of a true black ground, which is easier to sit with and
+     lets the brand colours read as colour rather than as glow. */
+  --bg:            #1B1E18;
+  --bg-raised:     #242820;
+  --bg-sunken:     #15170F;
+  --ink:           #F3F0E7;
+  --ink-soft:      #B4B0A3;
+  --ink-faint:     #938E81;
+  --line:          #373B31;
+  --line-strong:   #4E5347;
 
-  --accent:        #6FB8E0;
-  --accent-hover:  #9AD0EE;
-  --accent-soft:   #12293A;
-  --accent-2:      #6FC9A0;
-  --accent-2-soft: #10291E;
-  --accent-3:      #F0938C;
-  --accent-3-soft: #2E1613;
-  --on-accent:     #06131C;
+  --accent:        #79BEE4;
+  --accent-hover:  #A3D6F0;
+  --accent-soft:   #1C3242;
+  --accent-2:      #79CFA6;
+  --accent-2-soft: #183121;
+  --accent-3:      #F2A19B;
+  --accent-3-soft: #38211D;
+  --on-accent:     #07131B;
 
-  --chip-live-ink: #9FE3C4;
-  --chip-soon-ink: #F0A9A2;
+  --chip-live-ink: #A6E6C8;
+  --chip-soon-ink: #F6B6B0;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
   --shadow-2: 0 6px 24px -8px rgba(0, 0, 0, .6);
@@ -468,7 +471,14 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   padding: 8px;
   background: var(--bg-sunken);
   border-radius: 12px;
+  transition: background var(--dur) var(--ease);
 }
+
+/* Tiles cycle through the three logo colours across a grid, so a row of
+   projects carries the brand rather than reading as neutral boxes. */
+.grid > *:nth-child(3n + 1) .logo-tile { background: var(--accent-soft); }
+.grid > *:nth-child(3n + 2) .logo-tile { background: var(--accent-2-soft); }
+.grid > *:nth-child(3n + 3) .logo-tile { background: var(--accent-3-soft); }
 .logo-tile img { width: 100%; height: 100%; object-fit: contain; }
 .logo-tile--lg { width: 104px; height: 104px; padding: 12px; }
 
@@ -505,6 +515,14 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   transition: border-color var(--dur) var(--ease);
 }
 .person:hover .person__avatar { border-color: var(--accent); }
+
+/* avatar rings cycle the same three colours */
+.grid > *:nth-child(3n + 1) .person__avatar { border-color: var(--accent-soft); }
+.grid > *:nth-child(3n + 2) .person__avatar { border-color: var(--accent-2-soft); }
+.grid > *:nth-child(3n + 3) .person__avatar { border-color: var(--accent-3-soft); }
+.grid > *:nth-child(3n + 1):hover .person__avatar { border-color: var(--accent); }
+.grid > *:nth-child(3n + 2):hover .person__avatar { border-color: var(--accent-2); }
+.grid > *:nth-child(3n + 3):hover .person__avatar { border-color: var(--accent-3); }
 .person__name { font-family: var(--font-display); font-size: 1.125rem; line-height: 1.3; }
 .person__handle { font-size: .875rem; color: var(--ink-soft); }
 .person__role { font-size: .875rem; color: var(--accent-2); }
@@ -687,10 +705,21 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 /* --- 15. Footer --------------------------------------------------------- */
 
 .site-footer {
+  position: relative;
   margin-top: auto;
   background: var(--bg-sunken);
   border-top: 1px solid var(--line);
   padding-block: clamp(2rem, 5vw, 3.25rem) 1.5rem;
+}
+/* the logo's four colours, drawn once across the foot of the page */
+.site-footer::before {
+  content: "";
+  position: absolute; inset-inline: 0; top: -1px; height: 3px;
+  background: linear-gradient(90deg,
+    var(--brand-red) 0%, var(--brand-red) 25%,
+    var(--brand-blue) 25%, var(--brand-blue) 50%,
+    var(--brand-green) 50%, var(--brand-green) 75%,
+    var(--brand-flame) 75%);
 }
 .site-footer__grid { display: grid; gap: 2rem; }
 @media (min-width: 720px)  { .site-footer__grid { grid-template-columns: 1.6fr 1fr 1fr; } }
