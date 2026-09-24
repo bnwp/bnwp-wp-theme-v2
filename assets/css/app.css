@@ -473,15 +473,28 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
               border-color var(--dur) var(--ease);
 }
-/* accent sweep on hover */
+/* Brand bar, always on. The gradient repeats twice across a double-width
+   background so hovering can slide it one full cycle and land where it
+   started — no snap back, and nothing moves when the card is at rest. */
 .card::before {
   content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px;
-  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue), var(--brand-green));
-  transform: scaleX(0); transform-origin: left;
-  transition: transform 480ms var(--ease);
+  background: linear-gradient(90deg,
+    var(--brand-red), var(--brand-blue), var(--brand-green),
+    var(--brand-red), var(--brand-blue), var(--brand-green));
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  transition: background-position 900ms var(--ease);
 }
+.card:hover::before, .card:focus-within::before { background-position: 0 0; }
+
 .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
-.card:hover::before, .card:focus-within::before { transform: scaleX(1); }
+
+/* The whole card is the link: the title's anchor is stretched over it, so
+   there is still exactly one link and one tab stop per card. Every .card in
+   this theme is a project card with a single title link — check that before
+   adding a second link inside one, it would end up unclickable. */
+.card__title a::after { content: ""; position: absolute; inset: 0; }
+.card:hover .arrow-link svg { transform: translateX(4px); }
 
 .card__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .card__title { margin: 0; font-size: var(--step-2); }

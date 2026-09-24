@@ -925,12 +925,16 @@ function bnwp_register_content_types() {
         'auth_callback'     => function () { return current_user_can('manage_categories'); },
     ));
 
+    // The admin save path routes rich text through wp_kses_post; REST has to
+    // agree, or markup written over the API is silently flattened on the way
+    // into the database while the editor's own saves keep their tags.
+    $richtext = bnwp_richtext_meta_keys();
     foreach (bnwp_meta_keys() as $key) {
         register_post_meta('', $key, array(
             'type'              => 'string',
             'single'            => true,
             'show_in_rest'      => true,
-            'sanitize_callback' => 'sanitize_text_field',
+            'sanitize_callback' => in_array($key, $richtext, true) ? 'wp_kses_post' : 'sanitize_text_field',
             'auth_callback'     => function () { return current_user_can('edit_posts'); },
         ));
     }
@@ -1296,8 +1300,17 @@ function bnwp_en_sitemap_entries() {
     return $out;
 }
 
+/**
+ * Yoast fires this as an action and reads the result back off its own object —
+ * a returned string is discarded, and the wrapper is ours to supply. Yoast
+ * only adds the XML declaration and stylesheet around it.
+ */
 function bnwp_en_sitemap_body() {
-    $xml = '';
+    if (!isset($GLOBALS['wpseo_sitemaps'])) {
+        return;
+    }
+    $xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "
+";
     foreach (bnwp_en_sitemap_entries() as $url => $modified) {
         $xml .= "	<url>
 		<loc>" . esc_url($url) . "</loc>
@@ -1309,8 +1322,20 @@ function bnwp_en_sitemap_body() {
         $xml .= "	</url>
 ";
     }
-    return $xml;
+    $xml .= '</urlset>';
+
+    $GLOBALS['wpseo_sitemaps']->set_sitemap($xml);
+    $GLOBALS['wpseo_sitemaps']->set_bad_sitemap(false);
 }
+
+/** Yoast caches sitemaps per type; ours has to be dropped when content moves. */
+function bnwp_invalidate_en_sitemap() {
+    if (class_exists('WPSEO_Sitemaps_Cache')) {
+        WPSEO_Sitemaps_Cache::invalidate('en');
+    }
+}
+add_action('save_post', 'bnwp_invalidate_en_sitemap');
+add_action('deleted_post', 'bnwp_invalidate_en_sitemap');
 
 function bnwp_register_en_sitemap() {
     if (isset($GLOBALS['wpseo_sitemaps']) && is_object($GLOBALS['wpseo_sitemaps'])) {
