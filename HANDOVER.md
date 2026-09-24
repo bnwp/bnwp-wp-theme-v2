@@ -23,18 +23,20 @@ switch to make it publicly viewable is **WP Staging → Settings →
 
 ---
 
-## The big outstanding decision: production is still on v1
+## Deploying
 
-v2 has never been deployed to production. Everything described here was built
-and verified on staging. Going live means uploading the theme zip through
-**Appearance → Themes → Add New → Upload Theme** and activating it, then
-re-saving permalinks.
+Production runs v2. The live theme directory is **`bnwp-wikiconnect-v2`**, and
+the zip's root folder has to match that name or WordPress installs a second,
+unrelated theme instead of replacing the live one. Upload through **Appearance
+→ Themes → Add New → Upload Theme**, tick *replace current with uploaded*, then
+purge LiteSpeed.
 
-**Content does not transfer automatically.** The staging database is a
-separate copy. All the content work below was done on staging; repeating it on
-production means either re-running the scripts in `D:\bnwp-wikiconnect\build\`
-against the production URL, or migrating the staging database wholesale. The
-scripts are written to be idempotent and safe to re-run.
+Confirm what actually landed rather than inferring it from the rendered page —
+the theme version lives in `style.css` and is served over the API:
+
+    /?rest_route=/wp/v2/themes&status=active
+
+Bump that version with every upload and this check stays useful.
 
 ---
 
@@ -70,14 +72,15 @@ What to ask for, precisely:
 shown. Wikimedia Commons can resize, so project logos were re-fetched at 250px.
 `build/localise-logos.py` does this.
 
-### 2. Intermittent database errors
+### 2. Intermittent database errors — resolved, but only papered over
 
-"Error establishing a database connection" appears on **production as well as
-staging**, roughly one request in four at times. Site Health also reports the
-SQL server as outdated (MariaDB 10.6.28).
+"Error establishing a database connection" used to appear on roughly one
+request in four. Activating LiteSpeed Cache removed it: most requests no longer
+reach the database at all. Twelve consecutive checks now come back clean.
 
-Ask the host to check the MySQL connection limit and server load, and to
-confirm whether the version can be raised.
+The underlying weakness is untouched, so a purge at a busy moment could still
+show it. Site Health reports the SQL server as outdated (MariaDB 10.6.28);
+worth asking the host about the connection limit and the version.
 
 ### 3. Small limits
 
@@ -160,8 +163,6 @@ the two cannot share a divisor. `+` is appended automatically.
 
 ## Known gaps
 
-- **`_bnwp_status` is empty on all five projects**, so no ongoing/completed
-  chips appear. Set it per project.
 - **Organisers and Jury are empty on all five projects.** The fields exist
   (multi-select, stored by wiki username so one setting serves both languages).
 - Two people exist in the Hugo repo but were never migrated to WordPress:
@@ -172,6 +173,34 @@ the two cannot share a divisor. `+` is appended automatically.
   (`/about/`). The theme rewrites them through `home_url()` at render time so
   they work anyway, but converting them to proper post-type menu items would be
   cleaner.
+
+- **`hello-world` has English in its Bengali fields**, so Bengali readers get
+  an English page — the reverse of the usual gap.
+- **Two posts store raw Markdown** (`bangla-wikipedia`,
+  `quote-contest-2025-started`): their Bengali bodies render literal `###` and
+  `**`, because nothing on the site converts Markdown. Their English
+  translations are clean HTML, so only the Bengali side looks wrong.
+
+---
+
+## Writing content over the REST API
+
+Two things here have each cost an afternoon.
+
+**The database is `utf8`, not `utf8mb4`.** Anything outside the Basic
+Multilingual Plane — which in practice means emoji — cannot be stored, and the
+write fails outright with `rest_meta_database_error`. Bengali is unaffected.
+Encode emoji as hex entities (`&#x1f4a1;`) the way the existing posts do.
+
+**Only `_bnwp_body_en` may contain markup.** It is registered with
+`wp_kses_post`; every other key gets `sanitize_text_field`, which strips tags
+without complaining. The list lives in `bnwp_richtext_meta_keys()` and is
+shared by the REST registration and the admin save path — change one and you
+change both, which is the point. They disagreed once, and every English body
+on the site was flattened to a single paragraph before anyone noticed.
+
+Always read a value back after writing it. A REST write that returns 200 has
+not necessarily stored what you sent.
 
 ---
 
