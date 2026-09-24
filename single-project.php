@@ -112,10 +112,12 @@ while (have_posts()) : the_post();
                     $probe = new WP_Query($jury_args);
                     $jury  = $probe->have_posts() ? $probe : null;
                 }
-                if ($jury) : ?>
+                $guests = bnwp_project_external_jury();
+                if ($jury || $guests) : ?>
                 <div class="panel">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
                     <?php bnwp_person_rows($jury); ?>
+                    <?php bnwp_external_person_rows($guests); ?>
                 </div>
                 <?php endif; ?>
             </aside>
@@ -136,8 +138,11 @@ while (have_posts()) : the_post();
         <div class="wrap">
             <h2 style="font-size:var(--step-3);margin-bottom:1.75rem;"><?php echo esc_html(bnwp_text('সম্পর্কিত প্রকল্প', 'Related projects')); ?></h2>
             <div class="grid grid--3" data-stagger>
-                <?php while ($related->have_posts()) : $related->the_post(); $rl = bnwp_get_meta('_bnwp_logo'); ?>
-                <article class="card reveal">
+                <?php while ($related->have_posts()) : $related->the_post();
+                    $rl = bnwp_get_meta('_bnwp_logo');
+                    $rs = bnwp_get_meta('_bnwp_status');
+                ?>
+                <article class="card reveal<?php echo esc_attr(bnwp_card_classes($rs)); ?>">
                     <div class="card__top">
                         <?php if ($rl) : ?><span class="logo-tile"><?php bnwp_image($rl, array('w' => 128, 'alt' => '')); ?></span><?php endif; ?>
                     </div>

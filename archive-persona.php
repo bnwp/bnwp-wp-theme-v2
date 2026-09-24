@@ -52,19 +52,8 @@ $teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
     <div class="wrap">
         <?php if (have_posts()) : ?>
             <div class="grid grid--4" data-stagger>
-                <?php while (have_posts()) : the_post();
-                    $username = bnwp_get_meta('_bnwp_username');
-                    $role     = bnwp_get_meta_i18n('_bnwp_role');
-                ?>
-                <a class="person reveal" href="<?php echo esc_url(bnwp_person_url()); ?>"<?php echo bnwp_person_is_external() ? ' rel="noopener"' : ''; ?>>
-                    <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
-                        'w' => 176, 'h' => 176, 'class' => 'person__avatar', 'alt' => get_the_title(),
-                    )); ?>
-                    <span class="person__name"><?php the_title(); ?></span>
-                    <?php if ($username) : ?><span class="person__handle">@<?php echo esc_html($username); ?></span><?php endif; ?>
-                    <?php if ($role) : ?><span class="person__role"><?php echo esc_html($role); ?></span><?php endif; ?>
-                <?php if (bnwp_person_is_external()) { bnwp_external_mark(); } ?>
-                </a>
+                <?php while (have_posts()) : the_post(); ?>
+                    <?php get_template_part('partial-person-card'); ?>
                 <?php endwhile; ?>
             </div>
 
@@ -74,5 +63,33 @@ $teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
         <?php endif; ?>
     </div>
 </div>
+
+<?php
+/**
+ * Former members, under their own heading. They are held out of the listing
+ * above by bnwp_order_people(), so this is the only place they appear — except
+ * on the Former team filter itself, where showing them twice would be silly.
+ */
+$former = is_tax('team', bnwp_former_team()) ? null : bnwp_former_people();
+if ($former) : ?>
+<div class="section section--sunken">
+    <div class="wrap">
+        <div class="section__head">
+            <div>
+                <h2><?php echo esc_html(bnwp_text('প্রাক্তন সদস্যবৃন্দ', 'Former members')); ?></h2>
+                <p><?php echo esc_html(bnwp_text(
+                    'যাঁরা অতীতে এই উদ্যোগে অবদান রেখেছেন।',
+                    'People who contributed to this initiative in the past.'
+                )); ?></p>
+            </div>
+        </div>
+        <div class="grid grid--4" data-stagger>
+            <?php while ($former->have_posts()) : $former->the_post(); ?>
+                <?php get_template_part('partial-person-card'); ?>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php get_footer(); ?>

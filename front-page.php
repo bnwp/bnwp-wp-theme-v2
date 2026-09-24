@@ -23,7 +23,7 @@ $stats = bnwp_stats();
             </div>
 
             <div class="stats reveal">
-                <p class="panel__title"><?php echo esc_html(bnwp_text('এখন পর্যন্ত আমাদের অবদান', 'Our impact so far')); ?></p>
+                <p class="panel__title"><?php echo esc_html(bnwp_home_text('impact_title')); ?></p>
                 <div class="stats__grid">
                     <?php foreach ($stats as $s) : ?>
                         <div class="stat">
@@ -45,24 +45,18 @@ $stats = bnwp_stats();
         <?php endif; ?>
 
         <div class="hero__intro">
-            <p class="eyebrow reveal"><?php echo esc_html(bnwp_text('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh')); ?></p>
+            <p class="eyebrow reveal"><?php echo esc_html(bnwp_home_text('eyebrow')); ?></p>
 
-            <h1 class="reveal"><?php echo esc_html(bnwp_text(
-                'বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ',
-                'Bangla WikiConnect is a collaborative initiative'
-            )); ?></h1>
+            <h1 class="reveal"><?php echo esc_html(bnwp_home_text('heading')); ?></h1>
 
-            <p class="hero__lead reveal"><?php echo esc_html(bnwp_text(
-                'বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর আমরা দৃষ্টি নিবদ্ধ করি। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে উইকিপিডিয়া ও এর সহযোগী প্রকল্প — উইকিউক্তি, উইকিভ্রমণ, উইকিবই ও উইকিঅভিধানে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করাই আমাদের লক্ষ্য।',
-                'We focus on growing and expanding Wikipedia content in Bangla. Through contests, edit-a-thons and training programmes, we aim to build high-quality, inclusive content across Wikipedia and its sister projects — Wikiquote, Wikivoyage, Wikibooks and Wiktionary.'
-            )); ?></p>
+            <p class="hero__lead reveal"><?php echo esc_html(bnwp_home_text('lead')); ?></p>
 
             <div class="hero__actions reveal">
                 <a class="btn btn--primary" href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>">
-                    <?php echo esc_html(bnwp_text('আরও জানুন', 'Learn more')); ?>
+                    <?php echo esc_html(bnwp_home_text('cta_primary')); ?>
                 </a>
                 <a class="btn btn--ghost" href="https://meta.wikimedia.org/wiki/Bangla_WikiConnect">
-                    <?php echo esc_html(bnwp_text('মেটা’উইকিতে পড়ুন', 'Read on Meta-Wiki')); ?>
+                    <?php echo esc_html(bnwp_home_text('cta_secondary')); ?>
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
                 </a>
             </div>
@@ -80,11 +74,11 @@ if ($projects->have_posts()) : ?>
     <div class="wrap">
         <div class="section__head">
             <div>
-                <h2><?php echo esc_html(bnwp_text('আমাদের প্রকল্পসমূহ', 'Our projects')); ?></h2>
-                <p><?php echo esc_html(bnwp_text('চলমান ও সদ্য সমাপ্ত প্রতিযোগিতা এবং কর্মসূচি', 'Ongoing and recently completed contests and programmes')); ?></p>
+                <h2><?php echo esc_html(bnwp_home_text('projects_title')); ?></h2>
+                <p><?php echo esc_html(bnwp_home_text('projects_sub')); ?></p>
             </div>
             <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($project ? $project : home_url('/projects/'), $lang)); ?>">
-                <?php echo esc_html(bnwp_text('সব প্রকল্প দেখুন', 'All projects')); ?>
+                <?php echo esc_html(bnwp_home_text('projects_all')); ?>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
             </a>
         </div>
@@ -95,7 +89,7 @@ if ($projects->have_posts()) : ?>
                 $lead   = bnwp_get_meta_i18n('_bnwp_lead');
                 $status = bnwp_get_meta('_bnwp_status');
             ?>
-            <article class="card reveal">
+            <article class="card reveal<?php echo esc_attr(bnwp_card_classes($status)); ?>">
                 <div class="card__top">
                     <?php if ($logo) : ?>
                         <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '')); ?></span>
@@ -129,9 +123,9 @@ if ($recent->have_posts()) : ?>
 <section class="section">
     <div class="wrap">
         <div class="section__head">
-            <h2><?php echo esc_html(bnwp_text('বার্তাকক্ষ', 'Newsroom')); ?></h2>
+            <h2><?php echo esc_html(bnwp_home_text('newsroom_title')); ?></h2>
             <a class="arrow-link" href="<?php echo esc_url(bnwp_page_url('posts', $lang)); ?>">
-                <?php echo esc_html(bnwp_text('সব পোস্ট', 'All posts')); ?>
+                <?php echo esc_html(bnwp_home_text('newsroom_all')); ?>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
             </a>
         </div>
@@ -162,7 +156,12 @@ $people_args = array(
     'post_type'      => 'persona',
     'posts_per_page' => 8,
     'no_found_rows'  => true,
-    'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot')),
+    'tax_query'      => array(
+        'relation' => 'AND',
+        array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot'),
+        array('taxonomy' => 'team', 'field' => 'slug', 'terms' => bnwp_former_team(), 'operator' => 'NOT IN'),
+    ),
+    'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
 );
 $people = new WP_Query($people_args);
 if ($people->have_posts()) : ?>
@@ -170,11 +169,11 @@ if ($people->have_posts()) : ?>
     <div class="wrap">
         <div class="section__head">
             <div>
-                <h2><?php echo esc_html(bnwp_text('মূল দল', 'Core team')); ?></h2>
-                <p><?php echo esc_html(bnwp_text('যাঁরা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative')); ?></p>
+                <h2><?php echo esc_html(bnwp_home_text('team_title')); ?></h2>
+                <p><?php echo esc_html(bnwp_home_text('team_sub')); ?></p>
             </div>
             <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/persona/'), $lang)); ?>">
-                <?php echo esc_html(bnwp_text('সব সদস্য', 'All members')); ?>
+                <?php echo esc_html(bnwp_home_text('team_all')); ?>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
             </a>
         </div>
@@ -203,7 +202,7 @@ if ($people->have_posts()) : ?>
 
 <section class="section">
     <div class="wrap" style="text-align:center;">
-        <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_text('আমাদের অংশীদার', 'Our partners')); ?></h2>
+        <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_home_text('partners_title')); ?></h2>
         <?php $partners = bnwp_partners(); ?>
         <?php if ($partners) : ?>
         <div class="partners" data-stagger style="margin-top:2rem;">

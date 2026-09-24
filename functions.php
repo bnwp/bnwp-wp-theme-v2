@@ -675,7 +675,7 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
-        '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
+        '_bnwp_organisers', '_bnwp_jury', '_bnwp_ext_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
@@ -689,7 +689,7 @@ function bnwp_richtext_meta_keys() {
 
 /** Meta holding several lines, which sanitize_text_field would collapse. */
 function bnwp_multiline_meta_keys() {
-    return array('_bnwp_links', '_bnwp_excerpt_en');
+    return array('_bnwp_links', '_bnwp_ext_jury', '_bnwp_excerpt_en');
 }
 
 /**
@@ -705,6 +705,188 @@ function bnwp_meta_sanitizer($key) {
         return 'sanitize_textarea_field';
     }
     return 'sanitize_text_field';
+}
+
+/**
+ * The team slug that marks somebody as no longer active.
+ *
+ * Former members stay on the site — their past work does not stop being
+ * theirs — but they are held back out of the current team and listed under
+ * their own heading.
+ */
+function bnwp_former_team() {
+    return 'former';
+}
+
+/** Is this person in the former-members team? */
+function bnwp_is_former($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    return has_term(bnwp_former_team(), 'team', $post_id);
+}
+
+/**
+ * People are listed in the order set by the Order box on each team member,
+ * lowest first, and alphabetically within the same number. Without this they
+ * come back newest-first, which is meaningless for a team.
+ */
+function bnwp_order_people($query) {
+    if (is_admin() || !$query->is_main_query()) {
+        return;
+    }
+    if (!$query->is_post_type_archive('persona') && !$query->is_tax('team')) {
+        return;
+    }
+    $query->set('orderby', array('menu_order' => 'ASC', 'title' => 'ASC'));
+
+    // The main listing is the current team; former members get their own
+    // section further down the page. Asking for the former team directly
+    // still shows them.
+    if (!$query->is_tax('team', bnwp_former_team())) {
+        $query->set('tax_query', array(array(
+            'taxonomy' => 'team',
+            'field'    => 'slug',
+            'terms'    => bnwp_former_team(),
+            'operator' => 'NOT IN',
+        )));
+    }
+}
+add_action('pre_get_posts', 'bnwp_order_people');
+
+/** Everyone in the former-members team, in the same order as the main list. */
+function bnwp_former_people($limit = 100) {
+    $q = new WP_Query(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => $limit,
+        'no_found_rows'  => true,
+        'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
+        'tax_query'      => array(array(
+            'taxonomy' => 'team',
+            'field'    => 'slug',
+            'terms'    => bnwp_former_team(),
+        )),
+    ));
+    return $q->have_posts() ? $q : null;
+}
+
+/**
+ * Guest jurors written straight onto a project.
+ *
+ * A one-off reviewer for a single contest is not a team member, and adding
+ * them as one clutters the Team list for good. This keeps them on the project
+ * that invited them. One per line:
+ *
+ *     Bengali name | English name | Description | URL | Image
+ *
+ * Only the first name is required; the rest may be left empty, keeping their
+ * separators — "Name |  | Reviewer |  | https://…/photo.jpg".
+ */
+function bnwp_project_external_jury($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $out = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_bnwp_ext_jury', true)) as $line) {
+        if (trim($line) === '') {
+            continue;
+        }
+        $p = array_map('trim', array_pad(explode('|', $line), 5, ''));
+        $name = bnwp_is_en() && $p[1] !== '' ? $p[1] : $p[0];
+        if ($name === '') {
+            continue;
+        }
+        $out[] = array(
+            'name' => $name,
+            'note' => $p[2],
+            'url'  => filter_var($p[3], FILTER_VALIDATE_URL) ? $p[3] : '',
+            'img'  => $p[4],
+        );
+    }
+    return $out;
+}
+
+/** Render guest jurors as rows matching bnwp_person_rows(). */
+function bnwp_external_person_rows($people) {
+    if (!$people) {
+        return;
+    }
+    echo '<div class="peoplelist">';
+    foreach ($people as $person) {
+        $tag = $person['url'] !== '' ? 'a' : 'div';
+        printf(
+            '<%s class="peoplelist__row%s"%s>',
+            $tag,
+            $person['url'] !== '' ? '' : ' peoplelist__row--static',
+            $person['url'] !== '' ? ' href="' . esc_url($person['url']) . '" rel="noopener"' : ''
+        );
+        bnwp_image($person['img'], array(
+            'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
+        ));
+        echo '<span class="peoplelist__text">';
+        printf('<span class="peoplelist__name">%s</span>', esc_html($person['name']));
+        if ($person['note'] !== '') {
+            printf('<span class="peoplelist__note">%s</span>', esc_html($person['note']));
+        }
+        echo '</span>';
+        if ($person['url'] !== '') {
+            bnwp_external_mark();
+        }
+        printf('</%s>', $tag);
+    }
+    echo '</div>';
+}
+
+/**
+ * The wording on the front page.
+ *
+ * Every line is "Bengali | English", the same shape as the Impact, Partners
+ * and Social rows, so one Customiser section holds both languages and nobody
+ * has to touch a template to reword the home page. Leave a row empty and the
+ * default below is used; leave the English half empty and it falls back to
+ * the Bengali, exactly as the rest of the site does.
+ */
+function bnwp_home_defaults() {
+    return array(
+        'impact_title'   => array('এখন পর্যন্ত আমাদের অবদান', 'Our impact so far'),
+        'eyebrow'        => array('মুক্ত জ্ঞান আন্দোলন · বাংলাদেশ', 'Free knowledge movement · Bangladesh'),
+        'heading'        => array('বাংলা উইকিসংযোগ একটি সহযোগিতামূলক উদ্যোগ', 'Bangla WikiConnect is a collaborative initiative'),
+        'lead'           => array(
+            'বাংলা ভাষায় উইকিপিডিয়ার বিষয়বস্তু বৃদ্ধি এবং সম্প্রসারণের উপর আমরা দৃষ্টি নিবদ্ধ করি। বিভিন্ন আকর্ষণীয় প্রতিযোগিতা, সম্পাদনা-অ-থন এবং প্রশিক্ষণ কর্মসূচির মাধ্যমে উইকিপিডিয়া ও এর সহযোগী প্রকল্প — উইকিউক্তি, উইকিভ্রমণ, উইকিবই ও উইকিঅভিধানে উচ্চমানের, অন্তর্ভুক্তিমূলক বিষয়বস্তু তৈরি করাই আমাদের লক্ষ্য।',
+            'We focus on growing and expanding Wikipedia content in Bangla. Through contests, edit-a-thons and training programmes, we aim to build high-quality, inclusive content across Wikipedia and its sister projects — Wikiquote, Wikivoyage, Wikibooks and Wiktionary.'
+        ),
+        'cta_primary'    => array('আরও জানুন', 'Learn more'),
+        'cta_secondary'  => array('মেটা’উইকিতে পড়ুন', 'Read on Meta-Wiki'),
+        'projects_title' => array('আমাদের প্রকল্পসমূহ', 'Our projects'),
+        'projects_sub'   => array('চলমান ও সদ্য সমাপ্ত প্রতিযোগিতা এবং কর্মসূচি', 'Ongoing and recently completed contests and programmes'),
+        'projects_all'   => array('সব প্রকল্প দেখুন', 'All projects'),
+        'newsroom_title' => array('বার্তাকক্ষ', 'Newsroom'),
+        'newsroom_all'   => array('সব পোস্ট', 'All posts'),
+        'team_title'     => array('মূল দল', 'Core team'),
+        'team_sub'       => array('যাঁরা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
+        'team_all'       => array('সব সদস্য', 'All members'),
+        'partners_title' => array('আমাদের অংশীদার', 'Our partners'),
+    );
+}
+
+function bnwp_home_text($key) {
+    $defaults = bnwp_home_defaults();
+    if (!isset($defaults[$key])) {
+        return '';
+    }
+    list($bn, $en) = $defaults[$key];
+
+    $raw = trim((string) get_theme_mod('bnwp_home_' . $key, ''));
+    if ($raw !== '') {
+        $parts = array_map('trim', explode('|', $raw, 2));
+        if ($parts[0] !== '') {
+            $bn = $parts[0];
+            $en = isset($parts[1]) && $parts[1] !== '' ? $parts[1] : $parts[0];
+        }
+    }
+    return bnwp_text($bn, $en);
+}
+
+/** Extra classes for a project card, so a finished one reads from the grid. */
+function bnwp_card_classes($status) {
+    return $status === 'completed' ? ' card--ended' : '';
 }
 
 /**
@@ -972,7 +1154,9 @@ function bnwp_register_content_types() {
         'has_archive'  => true,
         'rewrite'      => array('slug' => 'persona', 'with_front' => false),
         'menu_icon'    => 'dashicons-groups',
-        'supports'     => array('title', 'editor', 'excerpt', 'thumbnail', 'custom-fields', 'revisions'),
+        // page-attributes gives each person an Order box, which is what the
+        // listings sort on — see bnwp_order_people().
+        'supports'     => array('title', 'editor', 'excerpt', 'thumbnail', 'custom-fields', 'revisions', 'page-attributes'),
         'show_in_rest' => true,
     ));
 
@@ -1844,6 +2028,47 @@ function bnwp_customize($wp_customize) {
         'input_attrs' => array('rows' => 8, 'style' => 'font-family:ui-monospace,monospace;'),
     ));
 
+    $wp_customize->add_section('bnwp_home_section', array(
+        'title'       => __('Home page text', 'bnwp'),
+        'priority'    => 24,
+        'description' => __('Each box is <strong>Bengali | English</strong>. Leave a box empty to keep the wording the theme ships with; leave the English half empty and English readers see the Bengali.', 'bnwp'),
+    ));
+
+    $bnwp_home_labels = array(
+        'eyebrow'        => __('Hero: small line above the heading', 'bnwp'),
+        'heading'        => __('Hero: heading', 'bnwp'),
+        'lead'           => __('Hero: paragraph', 'bnwp'),
+        'cta_primary'    => __('Hero: first button', 'bnwp'),
+        'cta_secondary'  => __('Hero: second button', 'bnwp'),
+        'impact_title'   => __('Impact panel: heading', 'bnwp'),
+        'projects_title' => __('Projects: heading', 'bnwp'),
+        'projects_sub'   => __('Projects: sub-heading', 'bnwp'),
+        'projects_all'   => __('Projects: link to all', 'bnwp'),
+        'newsroom_title' => __('Newsroom: heading', 'bnwp'),
+        'newsroom_all'   => __('Newsroom: link to all', 'bnwp'),
+        'team_title'     => __('Team: heading', 'bnwp'),
+        'team_sub'       => __('Team: sub-heading', 'bnwp'),
+        'team_all'       => __('Team: link to all', 'bnwp'),
+        'partners_title' => __('Partners: heading', 'bnwp'),
+    );
+    foreach ($bnwp_home_labels as $bnwp_key => $bnwp_label) {
+        $bnwp_defaults = bnwp_home_defaults();
+        $wp_customize->add_setting('bnwp_home_' . $bnwp_key, array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_textarea_field',
+            'transport'         => 'refresh',
+        ));
+        $wp_customize->add_control('bnwp_home_' . $bnwp_key, array(
+            'label'       => $bnwp_label,
+            'section'     => 'bnwp_home_section',
+            'type'        => in_array($bnwp_key, array('lead', 'heading'), true) ? 'textarea' : 'text',
+            'input_attrs' => array(
+                'placeholder' => $bnwp_defaults[$bnwp_key][0] . ' | ' . $bnwp_defaults[$bnwp_key][1],
+            ),
+        ));
+    }
+    unset($bnwp_key, $bnwp_label, $bnwp_defaults);
+
     $wp_customize->add_section('bnwp_partners_section', array(
         'title'       => __('Partners', 'bnwp'),
         'priority'    => 31,
@@ -2137,6 +2362,30 @@ function bnwp_project_box($post) {
         bnwp_get_meta('_bnwp_jury', $post->ID),
         __('Leave empty to fall back to everyone in the Jury team.', 'bnwp')
     );
+
+    bnwp_field_textarea(
+        __('Guest jury (this project only)', 'bnwp'),
+        '_bnwp_ext_jury',
+        bnwp_get_meta('_bnwp_ext_jury', $post->ID),
+        '',
+        5
+    );
+    echo '<div class="description" style="margin-top:-8px;">'
+        . '<p style="margin:.2em 0;">'
+        . esc_html__('For reviewers invited to this contest who are not team members. They appear under the jury and are not added to the Team list. One per line, five parts separated by | :', 'bnwp')
+        . '</p>'
+        . '<p style="margin:.4em 0;"><code>'
+        . esc_html__('Bengali name | English name | Description | Link | Photo', 'bnwp')
+        . '</code></p>'
+        . '<p style="margin:.2em 0;">'
+        . esc_html__('Only the Bengali name is required. Keep the bars for anything you skip. The photo may be a Media Library URL or a Commons title such as File:Name.jpg, and the link may be any profile page.', 'bnwp')
+        . '</p>'
+        . '<p style="margin:.4em 0;"><strong>' . esc_html__('Example', 'bnwp') . '</strong><br><code>'
+        . esc_html('ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | https://example.edu/rsultana | File:Rehana_Sultana.jpg')
+        . '</code><br><code>'
+        . esc_html('কামাল হোসেন | Kamal Hosen | সম্পাদক |  | ')
+        . '</code></p>'
+        . '</div>';
 }
 
 function bnwp_persona_box($post) {

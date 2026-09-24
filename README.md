@@ -70,11 +70,39 @@ Details** box holds:
 | Lead | One sentence. Used on cards and as the meta description |
 | Status | Ongoing / Upcoming / Completed — drives the coloured chip |
 | Organisers, Jury | Multi-select; Ctrl or Cmd click for several |
+| Guest jury | Reviewers invited to this one contest — see below |
 
 Organisers and jury are stored by **wiki username**, not post ID, so one
 selection serves the project in both languages. Someone with no wiki username
 is stored by slug instead, so external jurors can be selected too. Leave Jury
 empty and it falls back to everyone in the Jury team.
+
+A project marked **Completed** keeps a solid red bar along the top of its
+card everywhere it is listed, so a finished contest reads as finished straight
+from the grid. Every other card gets the usual sweep of brand colour on hover.
+The status chip says the same thing in words, for anyone who cannot see the red.
+
+### Guest jury on a single project
+
+A reviewer invited to one contest is not a team member, and adding them as one
+would leave them in the Team list for good. Put them in **Guest jury** on the
+project instead. One per line, five parts:
+
+```
+Bengali name | English name | Description | Link | Photo
+```
+
+Only the Bengali name is required — keep the bars for anything you skip:
+
+```
+ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | https://example.edu/rsultana | File:Rehana_Sultana.jpg
+কামাল হোসেন | Kamal Hosen | সম্পাদক |  |
+```
+
+The photo may be a Media Library URL or a Commons `File:Name.jpg` title. With a
+link the row opens it, with an outward arrow; without one it is plain text.
+They appear under the project's Jury panel, below any team members chosen
+there, and nowhere else.
 
 Projects and team members use the **classic editor**. These records are mostly
 fields, and the block editor hides registered meta boxes in a collapsed drawer
@@ -96,11 +124,28 @@ Tick a team (`cot`, `technical`, `jury`) in the Teams box.
 | External profile URL | Where their card points, instead of a local page |
 | Social links | One per line, `Label \| URL`. Shown in an **Elsewhere** panel |
 
-**External jurors.** Add them as a team member like anyone else: name, photo
-and whatever social links they have, ticked into the `jury` team. Leave **Wiki
-username** empty if they have none — they stay selectable in a project's Jury
-field, stored by slug. Setting **External profile URL** makes their cards link
-straight out, with an outward arrow, rather than to a thin local page.
+**A standing external member** — someone outside the movement who reviews for
+you repeatedly — is worth adding here as a team member: name, photo and their
+social links, ticked into the `jury` team. Leave **Wiki username** empty if they
+have none; they stay selectable in a project's Jury field, stored by slug.
+Setting **External profile URL** makes their cards link straight out, with an
+outward arrow, rather than to a thin local page. For a one-off guest on a
+single contest, use **Guest jury** on the project instead.
+
+### Ordering team members
+
+Each team member has an **Order** box (in the sidebar, under Attributes). Lower
+numbers come first; people sharing a number fall back to alphabetical order.
+The number is global — one running order used by the team page, every team
+filter and the core-team strip on the home page — so leave gaps (10, 20, 30)
+and inserting somebody later means editing one record, not all of them.
+
+### Former members
+
+Tick a person into the **Former members** team. They drop out of the main team
+listing and the home page, and reappear under a *Former members* heading at the
+foot of the team page. Their profile, and every project that credits them, are
+untouched — past work stays theirs. Removing the tick puts them straight back.
 
 ### Adding a post
 
@@ -113,6 +158,18 @@ profile.
 ## Settings without code
 
 **Appearance → Customise**
+
+**Home page text** holds every heading, button and paragraph on the front page.
+Each box takes `Bengali | English`:
+
+```
+আমাদের প্রকল্পসমূহ | Our projects
+```
+
+Leave a box empty and the theme's own wording is used — the grey placeholder
+shows you what that is. Leave the English half empty and English readers see
+the Bengali, the same fallback the rest of the site uses. Nothing on the home
+page needs a template edit any more.
 
 | Section | Format, one row per line |
 |---|---|

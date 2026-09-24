@@ -473,19 +473,22 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
               border-color var(--dur) var(--ease);
 }
-/* Brand bar, always on. The gradient repeats twice across a double-width
-   background so hovering can slide it one full cycle and land where it
-   started — no snap back, and nothing moves when the card is at rest. */
+/* accent sweep on hover */
 .card::before {
   content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px;
-  background: linear-gradient(90deg,
-    var(--brand-red), var(--brand-blue), var(--brand-green),
-    var(--brand-red), var(--brand-blue), var(--brand-green));
-  background-size: 200% 100%;
-  background-position: 100% 0;
-  transition: background-position 900ms var(--ease);
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue), var(--brand-green));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 480ms var(--ease);
 }
-.card:hover::before, .card:focus-within::before { background-position: 0 0; }
+.card:hover::before, .card:focus-within::before { transform: scaleX(1); }
+
+/* A finished project keeps a red bar whether or not you are pointing at it,
+   so "this one is over" reads from the grid without opening anything. The
+   chip carries the same state in words, for anyone who cannot see the red. */
+.card--ended::before {
+  background: var(--brand-red);
+  transform: scaleX(1);
+}
 
 .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
 
@@ -598,6 +601,13 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 /* organiser / jury lists in the project sidebar */
 .peoplelist { display: grid; gap: .35rem; }
+/* An external juror has no page here, so the row is not a link unless one was
+   given; the description sits under the name in place of a role. */
+.peoplelist__row--static { cursor: default; }
+.peoplelist__row--static:hover { background: none; }
+.peoplelist__note {
+  font-size: .875rem; color: var(--ink-soft); line-height: 1.45;
+}
 .peoplelist__row {
   display: flex; align-items: center; gap: .75rem;
   min-height: 48px; padding: .4rem .5rem;
@@ -728,6 +738,13 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .layout-aside { display: grid; gap: 2rem; }
 @media (min-width: 1000px) {
   .layout-aside { grid-template-columns: minmax(0, 1fr) 360px; gap: 3.5rem; align-items: start; }
+}
+/* Stacked into one column, the sidebar would otherwise land after the whole
+   body — dates, status and jury pushed several screens below the title. Put
+   it first while stacked; from 1000px it is a real column again and this
+   stops applying. */
+@media (max-width: 999px) {
+  .layout-aside > aside { order: -1; }
 }
 
 /* contact channels */
