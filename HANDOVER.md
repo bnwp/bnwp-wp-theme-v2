@@ -206,23 +206,40 @@ not necessarily stored what you sent.
 
 ## Plugins
 
-Active and worth keeping: **Yoast SEO**, **UpdraftPlus**, **Akismet**,
-**Advanced Editor Tools**, **WordPress Importer**, **WP Staging** (until the
-staging site is retired), **Ally**.
+Nine remain, all active: **Yoast SEO**, **LiteSpeed Cache**, **UpdraftPlus**,
+**Akismet**, **Advanced Editor Tools**, **Wordfence**, **WP Staging**,
+**Redirect Redirection**, **Web Accessibility**.
 
-Inactive and safe to delete: **Elementor**, **Ultimate Addons for Elementor**,
-**Hello Dolly**. The v2 theme uses none of them.
+**LiteSpeed Cache** does the heavy lifting — it took TTFB from about a second
+to 120–270ms and stopped the intermittent "Error establishing a database
+connection". Purge it after any theme change, or you will spend an afternoon
+debugging cached HTML: **LiteSpeed Cache → Toolbox → Purge All**.
 
-**LiteSpeed Cache** is now active and doing the heavy lifting — it took TTFB
-from about a second to 120–270ms and stopped the intermittent "Error
-establishing a database connection". Purge it after any theme change, or you
-will spend an afternoon debugging cached HTML: **LiteSpeed Cache → Toolbox →
-Purge All**.
+**Advanced Editor Tools** matters more than it looks: projects and team members
+use the classic editor, and this is what gives that editor headings, tables and
+the rest of the formatting controls.
 
-**Wordfence** is installed but still switched off.
+**Wordfence** is active but its licence is not installed, so it is not yet
+scanning. Finish it at **Wordfence → Install**; the free licence needs an email
+address and is issued on the spot.
 
 **Redirect Redirection** is not needed for the language URLs — the theme
-handles the `?lang=en` redirects itself.
+handles the `?lang=en` redirects itself. Check whether it holds any other rules
+before removing it.
+
+### Removed, and why
+
+**Elementor**, **Ultimate Addons for Elementor** — nothing on the site used
+them; every page, post, project and person was checked for Elementor content
+and none had any. **Custom Fonts** — unused; the theme loads Tiro Bangla and
+Anek Bangla from Google itself. **Hello Dolly**, **WordPress Importer** — a
+joke plugin and a finished one-off. **Jetpack** — its entire front-end
+contribution was the `stats.wp.com` pixel, duplicating the Cloudflare analytics
+beacon that was already loading, and its Photon image proxy rewrote zero images
+because the heavy ones are Wikimedia Commons hotlinks it will not touch.
+
+Removing them took the homepage from 66 KB to 58 KB and left the front end
+loading nothing from `wp-content/plugins` at all.
 
 ---
 
