@@ -89,7 +89,7 @@ if ($projects->have_posts()) : ?>
                 $lead   = bnwp_get_meta_i18n('_bnwp_lead');
                 $status = bnwp_get_meta('_bnwp_status');
             ?>
-            <article class="card reveal<?php echo esc_attr(bnwp_card_classes($status)); ?>">
+            <article class="card reveal">
                 <div class="card__top">
                     <?php if ($logo) : ?>
                         <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '')); ?></span>

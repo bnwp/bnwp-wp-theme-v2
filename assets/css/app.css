@@ -482,13 +482,6 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 }
 .card:hover::before, .card:focus-within::before { transform: scaleX(1); }
 
-/* A finished project keeps a red bar whether or not you are pointing at it,
-   so "this one is over" reads from the grid without opening anything. The
-   chip carries the same state in words, for anyone who cannot see the red. */
-.card--ended::before {
-  background: var(--brand-red);
-  transform: scaleX(1);
-}
 
 .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
 
@@ -745,6 +738,25 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
    stops applying. */
 @media (max-width: 999px) {
   .layout-aside > aside { order: -1; }
+}
+
+/* A finished project says so across the top of its own page. A chip is too
+   quiet for the one thing a visitor most needs to know before reading the
+   entry rules — that they cannot enter. White on --brand-red is 8.9:1. */
+.endedbar {
+  background: var(--brand-red);
+  color: #fff;
+}
+.endedbar__inner {
+  display: flex; align-items: center; gap: .75rem;
+  padding-block: .9rem;
+}
+.endedbar svg { width: 21px; height: 21px; flex: none; }
+.endedbar strong { font-weight: 700; }
+.endedbar span { font-weight: 400; opacity: .92; }
+@media (max-width: 600px) {
+  .endedbar__inner { align-items: flex-start; }
+  .endedbar__text { display: grid; gap: .15rem; }
 }
 
 /* contact channels */

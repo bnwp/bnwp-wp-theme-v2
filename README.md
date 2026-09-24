@@ -77,10 +77,11 @@ selection serves the project in both languages. Someone with no wiki username
 is stored by slug instead, so external jurors can be selected too. Leave Jury
 empty and it falls back to everyone in the Jury team.
 
-A project marked **Completed** keeps a solid red bar along the top of its
-card everywhere it is listed, so a finished contest reads as finished straight
-from the grid. Every other card gets the usual sweep of brand colour on hover.
-The status chip says the same thing in words, for anyone who cannot see the red.
+A project marked **Completed** carries a red band across the top of its own
+page — *This project has ended* — in place of the usual status chip, so the one
+thing a visitor needs to know before reading the entry rules is not left to a
+small grey label. Cards in listings are unaffected: they keep the sweep of
+brand colour on hover and show the status chip as normal.
 
 ### Guest jury on a single project
 

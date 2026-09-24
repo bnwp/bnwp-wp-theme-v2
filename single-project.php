@@ -16,6 +16,20 @@ while (have_posts()) : the_post();
 ?>
 
 <article>
+    <?php if ($status === 'completed') : ?>
+        <div class="endedbar">
+            <div class="wrap endedbar__inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>
+                </svg>
+                <span class="endedbar__text">
+                    <strong><?php echo esc_html(bnwp_text('এই প্রকল্পটি সমাপ্ত হয়েছে।', 'This project has ended.')); ?></strong>
+                    <span><?php echo esc_html(bnwp_text('নতুন করে আর অংশগ্রহণ করা যাবে না।', 'New entries are no longer being accepted.')); ?></span>
+                </span>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="pagehead pagehead--sunken">
         <div class="wrap">
             <nav class="breadcrumb" aria-label="<?php echo esc_attr(bnwp_text('ব্রেডক্রাম্ব', 'Breadcrumb')); ?>">
@@ -26,7 +40,7 @@ while (have_posts()) : the_post();
 
             <div class="layout-aside" style="align-items:center;">
                 <div>
-                    <?php if ($status) : ?>
+                    <?php if ($status && $status !== 'completed') : ?>
                         <p style="margin:0 0 1rem;"><?php bnwp_status_chip($status); ?></p>
                     <?php endif; ?>
 
@@ -138,11 +152,8 @@ while (have_posts()) : the_post();
         <div class="wrap">
             <h2 style="font-size:var(--step-3);margin-bottom:1.75rem;"><?php echo esc_html(bnwp_text('সম্পর্কিত প্রকল্প', 'Related projects')); ?></h2>
             <div class="grid grid--3" data-stagger>
-                <?php while ($related->have_posts()) : $related->the_post();
-                    $rl = bnwp_get_meta('_bnwp_logo');
-                    $rs = bnwp_get_meta('_bnwp_status');
-                ?>
-                <article class="card reveal<?php echo esc_attr(bnwp_card_classes($rs)); ?>">
+                <?php while ($related->have_posts()) : $related->the_post(); $rl = bnwp_get_meta('_bnwp_logo'); ?>
+                <article class="card reveal">
                     <div class="card__top">
                         <?php if ($rl) : ?><span class="logo-tile"><?php bnwp_image($rl, array('w' => 128, 'alt' => '')); ?></span><?php endif; ?>
                     </div>

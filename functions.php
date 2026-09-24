@@ -884,11 +884,6 @@ function bnwp_home_text($key) {
     return bnwp_text($bn, $en);
 }
 
-/** Extra classes for a project card, so a finished one reads from the grid. */
-function bnwp_card_classes($status) {
-    return $status === 'completed' ? ' card--ended' : '';
-}
-
 /**
  * A person's social and profile links: one "Label | URL" per line.
  *
