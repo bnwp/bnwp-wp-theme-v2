@@ -105,7 +105,7 @@ while (have_posts()) : the_post();
                     </dl>
                 </div>
 
-                <?php $organisers = bnwp_personas_by_usernames(bnwp_get_meta('_bnwp_organisers')); ?>
+                <?php $organisers = bnwp_people_entries(bnwp_get_meta('_bnwp_organisers')); ?>
                 <?php if ($organisers) : ?>
                 <div class="panel">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('আয়োজক', 'Organisers')); ?></h2>
@@ -114,24 +114,16 @@ while (have_posts()) : the_post();
                 <?php endif; ?>
 
                 <?php
-                // Named jury for this project; otherwise everyone in the Jury team.
-                $jury = bnwp_personas_by_usernames(bnwp_get_meta('_bnwp_jury'));
+                // Named jury for this project — team members and guests in one
+                // list, in the order written; otherwise the Reviewers team.
+                $jury = bnwp_people_entries(bnwp_get_meta('_bnwp_jury'));
                 if (!$jury) {
-                    $jury_args = array(
-                        'post_type'      => 'persona',
-                        'posts_per_page' => 6,
-                        'no_found_rows'  => true,
-                        'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'jury')),
-                    );
-                    $probe = new WP_Query($jury_args);
-                    $jury  = $probe->have_posts() ? $probe : null;
+                    $jury = bnwp_team_entries('jury', 6);
                 }
-                $guests = bnwp_project_external_jury();
-                if ($jury || $guests) : ?>
+                if ($jury) : ?>
                 <div class="panel">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
                     <?php bnwp_person_rows($jury); ?>
-                    <?php bnwp_external_person_rows($guests); ?>
                 </div>
                 <?php endif; ?>
             </aside>

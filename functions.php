@@ -704,7 +704,7 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
-        '_bnwp_organisers', '_bnwp_jury', '_bnwp_ext_jury', '_bnwp_link', '_bnwp_links',
+        '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
@@ -718,7 +718,7 @@ function bnwp_richtext_meta_keys() {
 
 /** Meta holding several lines, which sanitize_text_field would collapse. */
 function bnwp_multiline_meta_keys() {
-    return array('_bnwp_links', '_bnwp_ext_jury', '_bnwp_excerpt_en');
+    return array('_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en');
 }
 
 /**
@@ -871,70 +871,95 @@ function bnwp_former_people($limit = 100) {
     return $q->have_posts() ? $q : null;
 }
 
-/**
- * Guest jurors written straight onto a project.
- *
- * A one-off reviewer for a single contest is not a team member, and adding
- * them as one clutters the Team list for good. This keeps them on the project
- * that invited them. One per line:
- *
- *     Bengali name | English name | Description | URL | Image
- *
- * Only the first name is required; the rest may be left empty, keeping their
- * separators — "Name |  | Reviewer |  | https://…/photo.jpg".
- */
-function bnwp_project_external_jury($post_id = null) {
-    $post_id = $post_id ? $post_id : get_the_ID();
-    $out = array();
-
-    foreach (preg_split('/\r\n|\r|\n/', (string) get_post_meta($post_id, '_bnwp_ext_jury', true)) as $line) {
-        if (trim($line) === '') {
-            continue;
-        }
-        $p = array_map('trim', array_pad(explode('|', $line), 5, ''));
-        $name = bnwp_is_en() && $p[1] !== '' ? $p[1] : $p[0];
-        if ($name === '') {
-            continue;
-        }
-        $out[] = array(
-            'name' => $name,
-            'note' => $p[2],
-            'url'  => filter_var($p[3], FILTER_VALIDATE_URL) ? $p[3] : '',
-            'img'  => $p[4],
-        );
+/** Find a team member by wiki username, falling back to the post slug. */
+function bnwp_persona_by_key($key) {
+    $key = trim((string) $key);
+    if ($key === '') {
+        return null;
     }
-    return $out;
+    $found = get_posts(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => 1,
+        'post_status'    => array('publish', 'draft'),
+        'meta_query'     => array(array('key' => '_bnwp_username', 'value' => $key, 'compare' => '=')),
+    ));
+    if ($found) {
+        return $found[0];
+    }
+    $found = get_posts(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => 1,
+        'post_status'    => array('publish', 'draft'),
+        'name'           => sanitize_title($key),
+    ));
+    return $found ? $found[0] : null;
 }
 
-/** Render guest jurors as rows matching bnwp_person_rows(). */
-function bnwp_external_person_rows($people) {
-    if (!$people) {
-        return;
+/**
+ * The people credited on a project: one per line, in the order written.
+ *
+ * A plain line is a wiki username, matched to a team member so their photo,
+ * role and page come from the one record. A line containing a bar is somebody
+ * with no record here — a guest juror invited to this contest — written out
+ * in full:
+ *
+ *     Bengali name | English name | Bengali description | English description | Link | Photo
+ *
+ * Both kinds sit in the same field and render in the order given, so a panel
+ * can mix the two freely. Commas still work on a plain line, which is how the
+ * field used to be stored.
+ */
+function bnwp_people_entries($raw) {
+    $entries = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+
+        if (strpos($line, '|') !== false) {
+            $p    = array_map('trim', array_pad(explode('|', $line), 6, ''));
+            $name = bnwp_is_en() && $p[1] !== '' ? $p[1] : ($p[0] !== '' ? $p[0] : $p[1]);
+            $note = bnwp_is_en() && $p[3] !== '' ? $p[3] : ($p[2] !== '' ? $p[2] : $p[3]);
+            if ($name === '') {
+                continue;
+            }
+            $entries[] = array(
+                'type' => 'guest',
+                'name' => $name,
+                'note' => $note,
+                'url'  => filter_var($p[4], FILTER_VALIDATE_URL) ? $p[4] : '',
+                'img'  => $p[5],
+            );
+            continue;
+        }
+
+        foreach (array_filter(array_map('trim', explode(',', $line))) as $key) {
+            $person = bnwp_persona_by_key($key);
+            $entries[] = $person
+                ? array('type' => 'persona', 'post' => $person)
+                // An unmatched username is shown rather than dropped, so a
+                // typo is visible on the page instead of silently missing.
+                : array('type' => 'guest', 'name' => $key, 'note' => '', 'url' => '', 'img' => '');
+        }
     }
-    echo '<div class="peoplelist">';
+    return $entries;
+}
+
+/** Everyone in a team, as entries, for the jury fallback. */
+function bnwp_team_entries($slug, $limit = 12) {
+    $people = get_posts(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => $limit,
+        'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
+        'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => $slug)),
+    ));
+    $entries = array();
     foreach ($people as $person) {
-        $tag = $person['url'] !== '' ? 'a' : 'div';
-        printf(
-            '<%s class="peoplelist__row%s"%s>',
-            $tag,
-            $person['url'] !== '' ? '' : ' peoplelist__row--static',
-            $person['url'] !== '' ? ' href="' . esc_url($person['url']) . '" rel="noopener"' : ''
-        );
-        bnwp_image($person['img'], array(
-            'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
-        ));
-        echo '<span class="peoplelist__text">';
-        printf('<span class="peoplelist__name">%s</span>', esc_html($person['name']));
-        if ($person['note'] !== '') {
-            printf('<span class="peoplelist__note">%s</span>', esc_html($person['note']));
-        }
-        echo '</span>';
-        if ($person['url'] !== '') {
-            bnwp_external_mark();
-        }
-        printf('</%s>', $tag);
+        $entries[] = array('type' => 'persona', 'post' => $person);
     }
-    echo '</div>';
+    return $entries;
 }
 
 /**
@@ -1050,89 +1075,79 @@ function bnwp_external_mark() {
 
 /** Meta keys stored as a comma-separated list rather than a single value. */
 function bnwp_list_meta_keys() {
-    return array('_bnwp_organisers', '_bnwp_jury');
+    return array();
+}
+
+/** One row: a team member, drawn from their own record. */
+function bnwp_person_row_post($post) {
+    $id       = $post->ID;
+    $username = (string) get_post_meta($id, '_bnwp_username', true);
+    $role     = bnwp_get_meta_i18n('_bnwp_role', $id);
+    $external = bnwp_person_is_external($id);
+
+    printf(
+        '<a class="peoplelist__row" href="%s"%s>',
+        esc_url(bnwp_person_url($id)),
+        $external ? ' rel="noopener"' : ''
+    );
+    bnwp_image(get_post_meta($id, '_bnwp_img', true), array(
+        'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
+    ));
+    echo '<span class="peoplelist__text">';
+    printf('<span class="peoplelist__name">%s</span>', esc_html(get_the_title($id)));
+    if ($role !== '') {
+        printf('<span class="peoplelist__role">%s</span>', esc_html($role));
+    } elseif ($username !== '') {
+        printf('<span class="peoplelist__role">@%s</span>', esc_html($username));
+    }
+    echo '</span>';
+    if ($external) {
+        bnwp_external_mark();
+    }
+    echo '</a>';
+}
+
+/** One row: a guest with no record on this site. */
+function bnwp_person_row_guest($person) {
+    $tag = $person['url'] !== '' ? 'a' : 'div';
+    printf(
+        '<%s class="peoplelist__row%s"%s>',
+        $tag,
+        $person['url'] !== '' ? '' : ' peoplelist__row--static',
+        $person['url'] !== '' ? ' href="' . esc_url($person['url']) . '" rel="noopener"' : ''
+    );
+    bnwp_image($person['img'], array(
+        'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
+    ));
+    echo '<span class="peoplelist__text">';
+    printf('<span class="peoplelist__name">%s</span>', esc_html($person['name']));
+    if ($person['note'] !== '') {
+        printf('<span class="peoplelist__note">%s</span>', esc_html($person['note']));
+    }
+    echo '</span>';
+    if ($person['url'] !== '') {
+        bnwp_external_mark();
+    }
+    printf('</%s>', $tag);
 }
 
 /**
- * The people named on a project, looked up by wiki username.
- *
- * Usernames are stored rather than post IDs because the Bengali and English
- * records for one person are two different posts — the username is the only
- * identifier shared by both, so one setting serves either language.
+ * A compact list of people for the organiser and jury panels, team members
+ * and guests together, in the order they were written.
  */
-function bnwp_personas_by_usernames($csv, $limit = 12) {
-    $names = array_values(array_filter(array_map('trim', explode(',', (string) $csv))));
-    if (!$names) {
-        return null;
-    }
-
-    // Matched on wiki username, or on slug for people who have no wiki
-    // account - bnwp_persona_choices() stores whichever of the two it had.
-    $by_name = get_posts(array(
-        'post_type'      => 'persona',
-        'posts_per_page' => $limit,
-        'fields'         => 'ids',
-        'meta_query'     => array(
-            array('key' => '_bnwp_username', 'value' => $names, 'compare' => 'IN'),
-        ),
-    ));
-    $by_slug = get_posts(array(
-        'post_type'      => 'persona',
-        'posts_per_page' => $limit,
-        'fields'         => 'ids',
-        'post_name__in'  => $names,
-    ));
-
-    $ids = array_values(array_unique(array_merge($by_name, $by_slug)));
-    if (!$ids) {
-        return null;
-    }
-
-    $found = new WP_Query(array(
-        'post_type'      => 'persona',
-        'posts_per_page' => $limit,
-        'no_found_rows'  => true,
-        'post__in'       => $ids,
-        'orderby'        => 'post__in',
-    ));
-    return $found->have_posts() ? $found : null;
-}
-
-/** A compact list of people, used for the organiser and jury panels. */
-function bnwp_person_rows($query) {
-    if (!$query) {
+function bnwp_person_rows($entries) {
+    if (!$entries) {
         return;
     }
     echo '<div class="peoplelist">';
-    while ($query->have_posts()) {
-        $query->the_post();
-        $username = bnwp_get_meta('_bnwp_username');
-        $role     = bnwp_get_meta('_bnwp_role');
-        $external = bnwp_person_is_external();
-
-        printf(
-            '<a class="peoplelist__row" href="%s"%s>',
-            esc_url(bnwp_person_url()),
-            $external ? ' rel="noopener"' : ''
-        );
-        bnwp_image(bnwp_get_meta('_bnwp_img'), array(
-            'w' => 120, 'h' => 120, 'alt' => '', 'class' => 'peoplelist__avatar', 'fit' => 'cover',
-        ));
-        echo '<span class="peoplelist__text">';
-        printf('<span class="peoplelist__name">%s</span>', esc_html(get_the_title()));
-        if ($role !== '') {
-            printf('<span class="peoplelist__role">%s</span>', esc_html($role));
-        } elseif ($username !== '') {
-            printf('<span class="peoplelist__role">@%s</span>', esc_html($username));
+    foreach ($entries as $entry) {
+        if ($entry['type'] === 'persona') {
+            bnwp_person_row_post($entry['post']);
+        } else {
+            bnwp_person_row_guest($entry);
         }
-        echo '</span>';
-        if ($external) {
-            bnwp_external_mark();
-        }
-        echo '</a>';
     }
     echo '</div>';
-    wp_reset_postdata();
 }
 
 function bnwp_project_statuses() {
@@ -2550,51 +2565,6 @@ function bnwp_field_media($label, $name, $value) {
     <?php
 }
 
-/** Every distinct person on the site, keyed by wiki username. */
-function bnwp_persona_choices() {
-    $people = get_posts(array(
-        'post_type'      => 'persona',
-        'posts_per_page' => -1,
-        'post_status'    => array('publish', 'draft'),
-        'orderby'        => 'title',
-        'order'          => 'ASC',
-    ));
-
-    $choices = array();
-    foreach ($people as $person) {
-        // External jurors often have no wiki account at all, so fall back to
-        // the slug - otherwise they could never be picked for a project.
-        $username = get_post_meta($person->ID, '_bnwp_username', true);
-        $key      = $username !== '' ? $username : $person->post_name;
-        if ($key === '' || isset($choices[$key])) {
-            continue; // one entry per person, not one per language record
-        }
-        $choices[$key] = $person->post_title
-            . ($username !== '' ? ' (@' . $username . ')' : ' - ' . __('external', 'bnwp'));
-    }
-    return $choices;
-}
-
-function bnwp_field_people($label, $name, $value, $help) {
-    $selected = array_filter(array_map('trim', explode(',', (string) $value)));
-    $choices  = bnwp_persona_choices();
-    ?>
-    <div class="bnwp-field">
-        <label for="<?php echo esc_attr($name); ?>"><?php echo esc_html($label); ?></label>
-        <select class="widefat" id="<?php echo esc_attr($name); ?>" name="<?php echo esc_attr($name); ?>[]"
-                multiple size="<?php echo esc_attr(min(10, max(4, count($choices)))); ?>">
-            <?php foreach ($choices as $username => $text) : ?>
-                <option value="<?php echo esc_attr($username); ?>"
-                    <?php echo in_array($username, $selected, true) ? 'selected' : ''; ?>>
-                    <?php echo esc_html($text); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description"><?php echo esc_html($help); ?></p>
-    </div>
-    <?php
-}
-
 function bnwp_project_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_media(__('Logo', 'bnwp'), '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
@@ -2603,41 +2573,31 @@ function bnwp_project_box($post) {
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
 
-    bnwp_field_people(
+    bnwp_field_textarea(
         __('Organisers', 'bnwp'),
         '_bnwp_organisers',
         bnwp_get_meta('_bnwp_organisers', $post->ID),
-        __('Hold Ctrl (or Cmd) to select several. Chosen by wiki username, so the same selection works for the Bengali and English versions of this project.', 'bnwp')
+        '',
+        4
     );
-    bnwp_field_people(
+    bnwp_field_textarea(
         __('Jury / reviewers', 'bnwp'),
         '_bnwp_jury',
         bnwp_get_meta('_bnwp_jury', $post->ID),
-        __('Leave empty to fall back to everyone in the Jury team.', 'bnwp')
-    );
-
-    bnwp_field_textarea(
-        __('Guest jury (this project only)', 'bnwp'),
-        '_bnwp_ext_jury',
-        bnwp_get_meta('_bnwp_ext_jury', $post->ID),
         '',
         5
     );
     echo '<div class="description" style="margin-top:-8px;">'
-        . '<p style="margin:.2em 0;">'
-        . esc_html__('For reviewers invited to this contest who are not team members. They appear under the jury and are not added to the Team list. One per line, five parts separated by | :', 'bnwp')
-        . '</p>'
-        . '<p style="margin:.4em 0;"><code>'
-        . esc_html__('Bengali name | English name | Description | Link | Photo', 'bnwp')
-        . '</code></p>'
-        . '<p style="margin:.2em 0;">'
-        . esc_html__('Only the Bengali name is required. Keep the bars for anything you skip. The photo may be a Media Library URL or a Commons title such as File:Name.jpg, and the link may be any profile page.', 'bnwp')
-        . '</p>'
-        . '<p style="margin:.4em 0;"><strong>' . esc_html__('Example', 'bnwp') . '</strong><br><code>'
-        . esc_html('ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | https://example.edu/rsultana | File:Rehana_Sultana.jpg')
-        . '</code><br><code>'
-        . esc_html('কামাল হোসেন | Kamal Hosen | সম্পাদক |  | ')
-        . '</code></p>'
+        . '<p style="margin:.2em 0;"><strong>' . esc_html__('One person per line, shown in the order you write them.', 'bnwp') . '</strong></p>'
+        . '<p style="margin:.4em 0;">' . esc_html__('A wiki username on its own is matched to that team member, and their photo, role and page are used:', 'bnwp') . '</p>'
+        . '<p style="margin:.2em 0 .6em;"><code>Yahya</code><br><code>MdsShakil</code></p>'
+        . '<p style="margin:.4em 0;">' . esc_html__('For a guest with no record on this site — a juror invited to this contest only — write the whole row instead, six parts separated by | :', 'bnwp') . '</p>'
+        . '<p style="margin:.2em 0;"><code>' . esc_html__('Bengali name | English name | Bengali description | English description | Link | Photo', 'bnwp') . '</code></p>'
+        . '<p style="margin:.4em 0;"><strong>' . esc_html__('Example', 'bnwp') . '</strong><br>'
+        . '<code>' . esc_html('Yahya') . '</code><br>'
+        . '<code>' . esc_html('ड. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | Professor, University of Dhaka | https://example.edu/rsultana | File:Rehana_Sultana.jpg') . '</code><br>'
+        . '<code>' . esc_html('কামাল হোসেন | Kamal Hosen | সম্পাদক | Editor |  | ') . '</code></p>'
+        . '<p style="margin:.2em 0;">' . esc_html__('Keep the bars for anything you skip. Leave Jury empty and everyone in the Reviewers team is shown instead.', 'bnwp') . '</p>'
         . '</div>';
 }
 

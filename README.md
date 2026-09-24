@@ -69,41 +69,39 @@ Details** box holds:
 | Wiki URL | The Meta or project page; drives the sidebar link |
 | Lead | One sentence. Used on cards and as the meta description |
 | Status | Ongoing / Upcoming / Completed — drives the coloured chip |
-| Organisers, Jury | Multi-select; Ctrl or Cmd click for several |
-| Guest jury | Reviewers invited to this one contest — see below |
+| Organisers, Jury | One person per line — see below |
 
-Organisers and jury are stored by **wiki username**, not post ID, so one
-selection serves the project in both languages. Someone with no wiki username
-is stored by slug instead, so external jurors can be selected too. Leave Jury
-empty and it falls back to everyone in the Jury team.
+### Crediting people on a project
 
-A project marked **Completed** carries a red band across the top of its own
-page — *This project has ended* — in place of the usual status chip, so the one
-thing a visitor needs to know before reading the entry rules is not left to a
-small grey label. Cards in listings are unaffected: they keep the sweep of
-brand colour on hover and show the status chip as normal.
-
-### Guest jury on a single project
-
-A reviewer invited to one contest is not a team member, and adding them as one
-would leave them in the Team list for good. Put them in **Guest jury** on the
-project instead. One per line, five parts:
+**Organisers** and **Jury** are one person per line, shown in the order you
+write them. A wiki username on its own is matched to that team member, and
+their photo, role and page come from that one record — so a name is written
+once and serves both languages:
 
 ```
-Bengali name | English name | Description | Link | Photo
+Yahya
+MdsShakil
 ```
 
-Only the Bengali name is required — keep the bars for anything you skip:
+A guest with no record here — a juror invited to this one contest — is written
+out in full on its own line, six parts:
 
 ```
-ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | https://example.edu/rsultana | File:Rehana_Sultana.jpg
-কামাল হোসেন | Kamal Hosen | সম্পাদক |  |
+Bengali name | English name | Bengali description | English description | Link | Photo
 ```
 
-The photo may be a Media Library URL or a Commons `File:Name.jpg` title. With a
-link the row opens it, with an outward arrow; without one it is plain text.
-They appear under the project's Jury panel, below any team members chosen
-there, and nowhere else.
+```
+Yahya
+ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | Professor, University of Dhaka | https://example.edu/rsultana | File:Rehana_Sultana.jpg
+কামাল হোসেন | Kamal Hosen | সম্পাদক | Editor |  | 
+```
+
+Keep the bars for anything you skip. Both kinds sit in the same field and mix
+freely, so a jury of two team members and one outside academic is three lines.
+A username that matches nobody is shown as plain text rather than dropped, so a
+typo is visible on the page instead of silently missing.
+
+Leave **Jury** empty and everyone in the Reviewers team is listed instead.
 
 Projects and team members use the **classic editor**. These records are mostly
 fields, and the block editor hides registered meta boxes in a collapsed drawer
