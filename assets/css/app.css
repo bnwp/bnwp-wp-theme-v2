@@ -266,6 +266,11 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .lang-switch:hover { background: var(--bg-sunken); color: var(--ink); }
 .lang-switch svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .lang-switch span { display: none; }
+/* Below 480px the wordmark is hidden, which frees the width to spell the
+   language out — clearer than a bare globe. Between 480 and 560 the wordmark
+   is back and the row is tight again, so the label goes away until there is
+   room for both. */
+@media (max-width: 479px) { .lang-switch span { display: inline; } }
 @media (min-width: 560px) { .lang-switch span { display: inline; } }
 
 /* nav — mobile: stacked accordion; desktop: row with hover/focus dropdowns */
@@ -732,12 +737,16 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 @media (min-width: 1000px) {
   .layout-aside { grid-template-columns: minmax(0, 1fr) 360px; gap: 3.5rem; align-items: start; }
 }
-/* Stacked into one column, the sidebar would otherwise land after the whole
-   body — dates, status and jury pushed several screens below the title. Put
-   it first while stacked; from 1000px it is a real column again and this
-   stops applying. */
+/* Stacked into one column the sidebar lands after the whole body, which put
+   the status and dates several screens below the title. Split it instead:
+   display:contents lifts the panels into the grid so the facts can sit under
+   the title and the people stay at the foot, where a long list belongs.
+   From 1000px the aside is a real column again and none of this applies. */
 @media (max-width: 999px) {
-  .layout-aside > aside { order: -1; }
+  .aside--project { display: contents; }
+  .layout-aside > .aside--project > .panel--facts { order: -1; }
+  .layout-aside > .aside--project > .panel--people { order: 1; }
+  .layout-aside > .aside--project > .panel--people + .panel--people { margin-top: -1rem; }
 }
 
 /* A finished project says so across the top of its own page. A chip is too
@@ -758,6 +767,16 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .endedbar__inner { align-items: flex-start; }
   .endedbar__text { display: grid; gap: .15rem; }
 }
+
+/* Credit under a cover image: author, licence, source. Quieter than body
+   text, and the link still has to be findable. */
+.cover__caption {
+  margin: .6rem 0 0;
+  font-size: .875rem; line-height: 1.5;
+  color: var(--ink-soft);
+}
+.cover__caption a { color: var(--ink-soft); text-decoration: underline; }
+.cover__caption a:hover { color: var(--accent); }
 
 /* contact channels */
 .channels {

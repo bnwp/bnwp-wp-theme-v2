@@ -10,6 +10,8 @@ while (have_posts()) : the_post();
     $logo    = bnwp_get_meta('_bnwp_logo');
     $cover   = bnwp_get_meta('_bnwp_cover');
     $wiki    = bnwp_get_meta('_bnwp_wiki');
+    $wikitxt = bnwp_get_meta_i18n('_bnwp_wiki_label');
+    $caption = bnwp_get_meta_i18n('_bnwp_cover_caption');
     $lead    = bnwp_get_meta_i18n('_bnwp_lead');
     $status  = bnwp_get_meta('_bnwp_status');
     $archive = get_post_type_archive_link('project');
@@ -80,14 +82,17 @@ while (have_posts()) : the_post();
                             'class' => 'project__cover',
                             'fit'   => 'cover',
                         )); ?>
+                        <?php if ($caption) : ?>
+                            <figcaption class="cover__caption"><?php echo wp_kses_post($caption); ?></figcaption>
+                        <?php endif; ?>
                     </figure>
                 <?php endif; ?>
 
                 <div class="prose"><?php the_content(); ?></div>
             </div>
 
-            <aside class="stack" style="--flow:1.25rem;">
-                <div class="panel">
+            <aside class="stack aside--project" style="--flow:1.25rem;">
+                <div class="panel panel--facts">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('সংক্ষেপে', 'At a glance')); ?></h2>
                     <dl class="factlist">
                         <?php if ($status) : ?>
@@ -96,7 +101,9 @@ while (have_posts()) : the_post();
                         <?php endif; ?>
                         <?php if ($wiki) : ?>
                             <dt><?php echo esc_html(bnwp_text('উইকি', 'Wiki')); ?></dt>
-                            <dd><a href="<?php echo esc_url($wiki); ?>"><?php echo esc_html(wp_parse_url($wiki, PHP_URL_HOST)); ?></a></dd>
+                            <dd><a href="<?php echo esc_url($wiki); ?>"><?php
+                                echo esc_html($wikitxt !== '' ? $wikitxt : wp_parse_url($wiki, PHP_URL_HOST));
+                            ?></a></dd>
                         <?php endif; ?>
                         <dt><?php echo esc_html(bnwp_text('ভাষা', 'Language')); ?></dt>
                         <dd><?php echo esc_html(bnwp_is_en() ? 'English' : 'বাংলা'); ?></dd>
@@ -107,7 +114,7 @@ while (have_posts()) : the_post();
 
                 <?php $organisers = bnwp_people_entries(bnwp_get_meta('_bnwp_organisers')); ?>
                 <?php if ($organisers) : ?>
-                <div class="panel">
+                <div class="panel panel--people">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('আয়োজক', 'Organisers')); ?></h2>
                     <?php bnwp_person_rows($organisers); ?>
                 </div>
@@ -121,7 +128,7 @@ while (have_posts()) : the_post();
                     $jury = bnwp_team_entries('jury', 6);
                 }
                 if ($jury) : ?>
-                <div class="panel">
+                <div class="panel panel--people">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
                     <?php bnwp_person_rows($jury); ?>
                 </div>

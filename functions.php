@@ -703,6 +703,7 @@ function bnwp_meta_keys() {
     return array(
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
+        '_bnwp_cover_caption', '_bnwp_cover_caption_en', '_bnwp_wiki_label', '_bnwp_wiki_label_en',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
@@ -713,12 +714,15 @@ function bnwp_meta_keys() {
 
 /** Meta holding rich text, which must keep its markup through sanitising. */
 function bnwp_richtext_meta_keys() {
-    return array('_bnwp_body_en');
+    return array('_bnwp_body_en', '_bnwp_cover_caption', '_bnwp_cover_caption_en');
 }
 
 /** Meta holding several lines, which sanitize_text_field would collapse. */
 function bnwp_multiline_meta_keys() {
-    return array('_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en');
+    return array(
+        '_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en',
+        '_bnwp_cover_caption', '_bnwp_cover_caption_en',
+    );
 }
 
 /**
@@ -919,9 +923,26 @@ function bnwp_people_entries($raw) {
         }
 
         if (strpos($line, '|') !== false) {
-            $p    = array_map('trim', array_pad(explode('|', $line), 6, ''));
-            $name = bnwp_is_en() && $p[1] !== '' ? $p[1] : ($p[0] !== '' ? $p[0] : $p[1]);
-            $note = bnwp_is_en() && $p[3] !== '' ? $p[3] : ($p[2] !== '' ? $p[2] : $p[3]);
+            $p = array_map('trim', explode('|', $line));
+
+            // Which shape this line is, decided by whether the first field
+            // names somebody on the site. A team member may be given a
+            // description for this project alone, because what somebody does
+            // on a contest is rarely what their team role says.
+            $person = bnwp_persona_by_key($p[0]);
+            if ($person) {
+                $q = array_pad($p, 3, '');
+                $entries[] = array(
+                    'type' => 'persona',
+                    'post' => $person,
+                    'note' => bnwp_is_en() && $q[2] !== '' ? $q[2] : ($q[1] !== '' ? $q[1] : $q[2]),
+                );
+                continue;
+            }
+
+            $q    = array_pad($p, 6, '');
+            $name = bnwp_is_en() && $q[1] !== '' ? $q[1] : ($q[0] !== '' ? $q[0] : $q[1]);
+            $note = bnwp_is_en() && $q[3] !== '' ? $q[3] : ($q[2] !== '' ? $q[2] : $q[3]);
             if ($name === '') {
                 continue;
             }
@@ -929,8 +950,8 @@ function bnwp_people_entries($raw) {
                 'type' => 'guest',
                 'name' => $name,
                 'note' => $note,
-                'url'  => filter_var($p[4], FILTER_VALIDATE_URL) ? $p[4] : '',
-                'img'  => $p[5],
+                'url'  => filter_var($q[4], FILTER_VALIDATE_URL) ? $q[4] : '',
+                'img'  => $q[5],
             );
             continue;
         }
@@ -938,7 +959,7 @@ function bnwp_people_entries($raw) {
         foreach (array_filter(array_map('trim', explode(',', $line))) as $key) {
             $person = bnwp_persona_by_key($key);
             $entries[] = $person
-                ? array('type' => 'persona', 'post' => $person)
+                ? array('type' => 'persona', 'post' => $person, 'note' => '')
                 // An unmatched username is shown rather than dropped, so a
                 // typo is visible on the page instead of silently missing.
                 : array('type' => 'guest', 'name' => $key, 'note' => '', 'url' => '', 'img' => '');
@@ -957,7 +978,7 @@ function bnwp_team_entries($slug, $limit = 12) {
     ));
     $entries = array();
     foreach ($people as $person) {
-        $entries[] = array('type' => 'persona', 'post' => $person);
+        $entries[] = array('type' => 'persona', 'post' => $person, 'note' => '');
     }
     return $entries;
 }
@@ -1079,10 +1100,9 @@ function bnwp_list_meta_keys() {
 }
 
 /** One row: a team member, drawn from their own record. */
-function bnwp_person_row_post($post) {
+function bnwp_person_row_post($post, $note = '') {
     $id       = $post->ID;
     $username = (string) get_post_meta($id, '_bnwp_username', true);
-    $role     = bnwp_get_meta_i18n('_bnwp_role', $id);
     $external = bnwp_person_is_external($id);
 
     printf(
@@ -1095,8 +1115,11 @@ function bnwp_person_row_post($post) {
     ));
     echo '<span class="peoplelist__text">';
     printf('<span class="peoplelist__name">%s</span>', esc_html(get_the_title($id)));
-    if ($role !== '') {
-        printf('<span class="peoplelist__role">%s</span>', esc_html($role));
+    // What somebody does on a project is not their standing team role, so the
+    // role is deliberately not used here — only what this project says, and
+    // their username when it says nothing.
+    if ($note !== '') {
+        printf('<span class="peoplelist__note">%s</span>', esc_html($note));
     } elseif ($username !== '') {
         printf('<span class="peoplelist__role">@%s</span>', esc_html($username));
     }
@@ -1142,7 +1165,7 @@ function bnwp_person_rows($entries) {
     echo '<div class="peoplelist">';
     foreach ($entries as $entry) {
         if ($entry['type'] === 'persona') {
-            bnwp_person_row_post($entry['post']);
+            bnwp_person_row_post($entry['post'], isset($entry['note']) ? $entry['note'] : '');
         } else {
             bnwp_person_row_guest($entry);
         }
@@ -2569,7 +2592,34 @@ function bnwp_project_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_media(__('Logo', 'bnwp'), '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
     bnwp_field_media(__('Cover image', 'bnwp'), '_bnwp_cover', bnwp_get_meta('_bnwp_cover', $post->ID));
+    bnwp_field_textarea(
+        __('Cover caption', 'bnwp'),
+        '_bnwp_cover_caption',
+        bnwp_get_meta('_bnwp_cover_caption', $post->ID),
+        __('Shown under the cover image — author, licence and a link. Basic HTML is allowed, so <a href="…">CC BY-SA 4.0</a> works.', 'bnwp'),
+        3
+    );
+    bnwp_field_textarea(
+        __('Cover caption (English)', 'bnwp'),
+        '_bnwp_cover_caption_en',
+        bnwp_get_meta('_bnwp_cover_caption_en', $post->ID),
+        __('Leave empty to use the Bengali caption.', 'bnwp'),
+        3
+    );
     bnwp_field_text(__('Wiki URL', 'bnwp'), '_bnwp_wiki', bnwp_get_meta('_bnwp_wiki', $post->ID), 'url');
+    bnwp_field_text(
+        __('Wiki link text', 'bnwp'),
+        '_bnwp_wiki_label',
+        bnwp_get_meta('_bnwp_wiki_label', $post->ID)
+    );
+    bnwp_field_text(
+        __('Wiki link text (English)', 'bnwp'),
+        '_bnwp_wiki_label_en',
+        bnwp_get_meta('_bnwp_wiki_label_en', $post->ID)
+    );
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('What the Wiki row in the At a glance panel reads. Leave empty and the domain is shown.', 'bnwp')
+        . '</p>';
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
 
@@ -2589,15 +2639,15 @@ function bnwp_project_box($post) {
     );
     echo '<div class="description" style="margin-top:-8px;">'
         . '<p style="margin:.2em 0;"><strong>' . esc_html__('One person per line, shown in the order you write them.', 'bnwp') . '</strong></p>'
-        . '<p style="margin:.4em 0;">' . esc_html__('A wiki username on its own is matched to that team member, and their photo, role and page are used:', 'bnwp') . '</p>'
-        . '<p style="margin:.2em 0 .6em;"><code>Yahya</code><br><code>MdsShakil</code></p>'
-        . '<p style="margin:.4em 0;">' . esc_html__('For a guest with no record on this site — a juror invited to this contest only — write the whole row instead, six parts separated by | :', 'bnwp') . '</p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('Just a wiki username credits that team member, using their photo and page:', 'bnwp') . '</p>'
+        . '<p style="margin:.2em 0;"><code>Yahya</code></p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('Add a description to say what they did on this project. Their standing team role is never used here, because it is rarely what they did on a contest:', 'bnwp') . '</p>'
+        . '<p style="margin:.2em 0;"><code>' . esc_html__('Wiki username | Bengali description | English description', 'bnwp') . '</code></p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('Somebody with no record on this site — a guest juror invited to this contest only — takes the long form, six parts:', 'bnwp') . '</p>'
         . '<p style="margin:.2em 0;"><code>' . esc_html__('Bengali name | English name | Bengali description | English description | Link | Photo', 'bnwp') . '</code></p>'
-        . '<p style="margin:.4em 0;"><strong>' . esc_html__('Example', 'bnwp') . '</strong><br>'
-        . '<code>' . esc_html('Yahya') . '</code><br>'
-        . '<code>' . esc_html('ड. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | Professor, University of Dhaka | https://example.edu/rsultana | File:Rehana_Sultana.jpg') . '</code><br>'
-        . '<code>' . esc_html('কামাল হোসেন | Kamal Hosen | সম্পাদক | Editor |  | ') . '</code></p>'
-        . '<p style="margin:.2em 0;">' . esc_html__('Keep the bars for anything you skip. Leave Jury empty and everyone in the Reviewers team is shown instead.', 'bnwp') . '</p>'
+        . '<p style="margin:.6em 0 .2em;"><strong>' . esc_html__('Example', 'bnwp') . '</strong></p>'
+        . '<p style="margin:.2em 0;"><code>Yahya</code><br><code>RiazACU | প্রধান আয়োজক | Lead organiser</code><br><code>ড. রেহানা সুলতানা | Dr Rehana Sultana | বিশেষ বিচারক | Guest judge | https://example.edu/rsultana | File:Rehana_Sultana.jpg</code></p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('The two are told apart automatically: if the first field names somebody on the site it is a team member, otherwise it is a guest. Keep the bars for anything you skip. Leave Jury empty and everyone in the Reviewers team is shown instead.', 'bnwp') . '</p>'
         . '</div>';
 }
 

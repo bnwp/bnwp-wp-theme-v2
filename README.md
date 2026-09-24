@@ -74,34 +74,51 @@ Details** box holds:
 ### Crediting people on a project
 
 **Organisers** and **Jury** are one person per line, shown in the order you
-write them. A wiki username on its own is matched to that team member, and
-their photo, role and page come from that one record — so a name is written
-once and serves both languages:
+write them. Three shapes, told apart automatically by whether the first field
+names somebody on the site.
+
+A wiki username on its own credits that team member, using their photo and
+page:
 
 ```
 Yahya
-MdsShakil
 ```
 
-A guest with no record here — a juror invited to this one contest — is written
-out in full on its own line, six parts:
+A username followed by a description says what they did **on this project**.
+Their standing team role is never shown here — what somebody does on a contest
+is rarely what their role on the team says:
+
+```
+Wiki username | Bengali description | English description
+RiazACU | প্রধান আয়োজক | Lead organiser
+```
+
+Somebody with no record on this site — a guest juror invited to this contest
+only — takes the long form:
 
 ```
 Bengali name | English name | Bengali description | English description | Link | Photo
+ড. রেহানা সুলতানা | Dr Rehana Sultana | বিশেষ বিচারক | Guest judge | https://example.edu/rsultana | File:Rehana_Sultana.jpg
 ```
 
+All three mix freely in one field, so a jury of two team members and an outside
+academic is three lines. Keep the bars for anything you skip. A username that
+matches nobody is shown as plain text rather than dropped, so a typo is visible
+on the page instead of silently missing. Leave **Jury** empty and everyone in
+the Reviewers team is listed instead.
+
+### Cover image credit
+
+**Cover caption** appears under the cover image and is where the author,
+licence and source link go. Basic HTML is allowed, so a real link works:
+
 ```
-Yahya
-ড. রেহানা সুলতানা | Dr Rehana Sultana | অধ্যাপক, ঢাকা বিশ্ববিদ্যালয় | Professor, University of Dhaka | https://example.edu/rsultana | File:Rehana_Sultana.jpg
-কামাল হোসেন | Kamal Hosen | সম্পাদক | Editor |  | 
+ছবি: Rasel Ahmed, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, via Wikimedia Commons
 ```
 
-Keep the bars for anything you skip. Both kinds sit in the same field and mix
-freely, so a jury of two team members and one outside academic is three lines.
-A username that matches nobody is shown as plain text rather than dropped, so a
-typo is visible on the page instead of silently missing.
-
-Leave **Jury** empty and everyone in the Reviewers team is listed instead.
+There is an English box beside it; leave it empty to use the Bengali.
+**Wiki link text** does the same job for the Wiki row of the *At a glance*
+panel, which otherwise shows the bare domain.
 
 Projects and team members use the **classic editor**. These records are mostly
 fields, and the block editor hides registered meta boxes in a collapsed drawer
