@@ -736,6 +736,55 @@ function bnwp_meta_sanitizer($key) {
 }
 
 /**
+ * Teams in the order the site should present them.
+ *
+ * Alphabetical order is an accident of naming — it put Technical team before
+ * Core team, and in Bengali it sorts differently again. Each team carries an
+ * Order number instead, lowest first, with 0 meaning unranked and sorting
+ * last, the same rule the Order box on a person follows.
+ */
+function bnwp_team_default_order() {
+    // How the group presents itself, used for any team not given its own
+    // number on the Teams screen. Unknown teams fall to the end.
+    return array('cot' => 10, 'jury' => 20, 'technical' => 30, 'former' => 90);
+}
+
+function bnwp_team_order($term) {
+    $term = is_object($term) ? $term : get_term((int) $term, 'team');
+    if (!$term || is_wp_error($term)) {
+        return PHP_INT_MAX;
+    }
+    $n = (int) get_term_meta($term->term_id, '_bnwp_order', true);
+    if ($n > 0) {
+        return $n;
+    }
+    $defaults = bnwp_team_default_order();
+    return isset($defaults[$term->slug]) ? $defaults[$term->slug] : PHP_INT_MAX;
+}
+
+/** Sort a list of team terms in place and hand it back. */
+function bnwp_sort_teams($terms) {
+    if (!is_array($terms) || is_wp_error($terms)) {
+        return $terms;
+    }
+    usort($terms, function ($a, $b) {
+        $oa = bnwp_team_order($a);
+        $ob = bnwp_team_order($b);
+        if ($oa !== $ob) {
+            return $oa <=> $ob;
+        }
+        return strcoll(bnwp_term_name($a), bnwp_term_name($b));
+    });
+    return $terms;
+}
+
+/** Every team, ordered. The one place templates should ask. */
+function bnwp_teams($hide_empty = true) {
+    $terms = get_terms(array('taxonomy' => 'team', 'hide_empty' => (bool) $hide_empty));
+    return is_wp_error($terms) ? array() : bnwp_sort_teams($terms);
+}
+
+/**
  * The team slug that marks somebody as no longer active.
  *
  * Former members stay on the site — their past work does not stop being
@@ -1216,6 +1265,14 @@ function bnwp_register_content_types() {
         'show_in_rest' => true,
     ));
 
+    register_term_meta('team', '_bnwp_order', array(
+        'type'              => 'integer',
+        'single'            => true,
+        'show_in_rest'      => true,
+        'sanitize_callback' => 'absint',
+        'auth_callback'     => function () { return current_user_can('manage_categories'); },
+    ));
+
     register_term_meta('team', '_bnwp_name_en', array(
         'type'              => 'string',
         'single'            => true,
@@ -1566,13 +1623,10 @@ function bnwp_en_sitemap_entries() {
         }
     }
 
-    $terms = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
-    if (!is_wp_error($terms)) {
-        foreach ($terms as $term) {
-            $link = get_term_link($term);
-            if (!is_wp_error($link)) {
-                $urls[$link] = '';
-            }
+    foreach (bnwp_teams() as $term) {
+        $link = get_term_link($term);
+        if (!is_wp_error($link)) {
+            $urls[$link] = '';
         }
     }
 
@@ -2244,6 +2298,82 @@ function bnwp_english_box($post) {
     <?php endif; ?>
     <?php
 }
+
+/**
+ * Order and English name on the Teams screens.
+ *
+ * Terms have no Attributes panel of their own, so the two fields are added to
+ * the add and edit forms by hand.
+ */
+function bnwp_team_add_fields() {
+    ?>
+    <div class="form-field">
+        <label for="bnwp_term_order"><?php esc_html_e('Order', 'bnwp'); ?></label>
+        <input type="number" min="0" step="1" name="bnwp_term_order" id="bnwp_term_order" value="">
+        <p><?php esc_html_e('Lowest first. Leave at 0 and this team sorts after every numbered one.', 'bnwp'); ?></p>
+    </div>
+    <div class="form-field">
+        <label for="bnwp_term_name_en"><?php esc_html_e('English name', 'bnwp'); ?></label>
+        <input type="text" name="bnwp_term_name_en" id="bnwp_term_name_en" value="">
+        <p><?php esc_html_e('Shown to English readers. Leave blank to use the Bengali name.', 'bnwp'); ?></p>
+    </div>
+    <?php
+}
+add_action('team_add_form_fields', 'bnwp_team_add_fields');
+
+function bnwp_team_edit_fields($term) {
+    $order = (int) get_term_meta($term->term_id, '_bnwp_order', true);
+    $name  = (string) get_term_meta($term->term_id, '_bnwp_name_en', true);
+    ?>
+    <tr class="form-field">
+        <th scope="row"><label for="bnwp_term_order"><?php esc_html_e('Order', 'bnwp'); ?></label></th>
+        <td>
+            <input type="number" min="0" step="1" name="bnwp_term_order" id="bnwp_term_order"
+                   value="<?php echo esc_attr($order); ?>">
+            <p class="description"><?php esc_html_e('Lowest first. Leave at 0 and this team sorts after every numbered one. Used by the filter row on the team page and the badges on a profile.', 'bnwp'); ?></p>
+        </td>
+    </tr>
+    <tr class="form-field">
+        <th scope="row"><label for="bnwp_term_name_en"><?php esc_html_e('English name', 'bnwp'); ?></label></th>
+        <td>
+            <input type="text" name="bnwp_term_name_en" id="bnwp_term_name_en"
+                   value="<?php echo esc_attr($name); ?>" class="regular-text">
+            <p class="description"><?php esc_html_e('Shown to English readers. Leave blank to use the Bengali name.', 'bnwp'); ?></p>
+        </td>
+    </tr>
+    <?php
+}
+add_action('team_edit_form_fields', 'bnwp_team_edit_fields');
+
+function bnwp_team_save_fields($term_id) {
+    if (!current_user_can('manage_categories')) {
+        return;
+    }
+    if (isset($_POST['bnwp_term_order'])) {
+        update_term_meta($term_id, '_bnwp_order', absint(wp_unslash($_POST['bnwp_term_order'])));
+    }
+    if (isset($_POST['bnwp_term_name_en'])) {
+        update_term_meta($term_id, '_bnwp_name_en', sanitize_text_field(wp_unslash($_POST['bnwp_term_name_en'])));
+    }
+}
+add_action('created_team', 'bnwp_team_save_fields');
+add_action('edited_team', 'bnwp_team_save_fields');
+
+/** An "Order" column on the Teams list, so the running order is visible. */
+function bnwp_team_columns($columns) {
+    $columns['bnwp_order'] = __('Order', 'bnwp');
+    return $columns;
+}
+add_filter('manage_edit-team_columns', 'bnwp_team_columns');
+
+function bnwp_team_column_value($content, $column, $term_id) {
+    if ($column !== 'bnwp_order') {
+        return $content;
+    }
+    $n = (int) get_term_meta($term_id, '_bnwp_order', true);
+    return $n > 0 ? (string) $n : '—';
+}
+add_filter('manage_team_custom_column', 'bnwp_team_column_value', 10, 3);
 
 /** An "EN" column so it is obvious at a glance what still needs translating. */
 function bnwp_english_column($columns) {

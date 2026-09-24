@@ -15,7 +15,7 @@ if (is_tax('team')) {
     $subtitle = bnwp_text('বাংলা উইকিসংযোগের স্বেচ্ছাসেবী দল।', 'The volunteer team behind Bangla WikiConnect.');
 }
 
-$teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
+$teams = bnwp_teams();
 ?>
 
 <div class="pagehead pagehead--sunken">
@@ -25,7 +25,7 @@ $teams = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
             <p style="color:var(--ink-soft);max-width:62ch;margin:0 0 1.25rem;"><?php echo esc_html($subtitle); ?></p>
         <?php endif; ?>
 
-        <?php if (!is_wp_error($teams) && count($teams) > 1) : ?>
+        <?php if (count($teams) > 1) : ?>
             <nav aria-label="<?php echo esc_attr(bnwp_text('দল বাছাই', 'Filter by team')); ?>" style="display:flex;flex-wrap:wrap;gap:.5rem;">
                 <?php
                 $all = get_post_type_archive_link('persona');

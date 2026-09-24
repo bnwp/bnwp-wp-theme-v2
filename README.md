@@ -145,6 +145,17 @@ The number is global: one running order used by the team page, every team
 filter and the core-team strip on the home page. Leave gaps (10, 20, 30) and
 inserting somebody later means editing one record rather than all of them.
 
+### Ordering the teams themselves
+
+**Team Members → Teams** gives each team an **Order** box, working the same way
+as the one on a person: lowest first, 0 meaning unranked and sorting last. It
+sets the order of the filter row on the team page, the badges on a profile and
+the team links in the sitemap.
+
+Out of the box the theme uses Core team, Reviewers, Technical team, then Former
+members, without anything being configured. Setting a number on a team
+overrides that for that team.
+
 ### Former members
 
 Tick a person into the **Former members** team. They drop out of the main team

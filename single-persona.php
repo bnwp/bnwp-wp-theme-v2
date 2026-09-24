@@ -13,7 +13,7 @@ while (have_posts()) : the_post();
     $email    = bnwp_get_meta('_bnwp_email');
     $bio      = bnwp_get_meta_i18n('_bnwp_bio');
     $archive  = get_post_type_archive_link('persona');
-    $terms    = get_the_terms(get_the_ID(), 'team');
+    $terms    = bnwp_sort_teams(get_the_terms(get_the_ID(), 'team'));
 ?>
 
 <article>
