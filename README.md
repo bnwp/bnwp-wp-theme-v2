@@ -65,7 +65,7 @@ Details** box holds:
 
 | Field | Notes |
 |---|---|
-| Logo, Cover image | Media Library, a full URL, or a Commons `File:Name.svg` title |
+| Logo | Media Library, a full URL, or a Commons `File:Name.svg` title |
 | Wiki URL | The Meta or project page; drives the sidebar link |
 | Lead | One sentence. Used on cards and as the meta description |
 | Timeline | `2025-05-07 - 2025-06-07`. Written out in words in both languages |
@@ -77,10 +77,23 @@ Timeline against today's date, so a contest stops calling itself চলমান
 morning after it ends and nobody has to remember. A project with no timeline
 shows no chip.
 
-Listings — the home page and the projects archive — put ongoing first, then
-upcoming, then finished, with the most recent start first inside each group.
+Listings — the home page and the projects archive — are ordered:
+
+1. **Ongoing**, the one that started earliest first, since it has been running longest
+2. **Upcoming**, the one starting soonest first
+3. **Finished**, most recent first
+4. Anything without a timeline, last
+
 That order comes from a key rebuilt whenever a project is saved and once a day
 on cron, since the answer changes with the calendar rather than with edits.
+
+### Pictures in a project
+
+There is no cover-image field. Put pictures in the body text, where you can
+caption them and choose where they sit — the convention here is one image
+after the opening paragraph. Add it separately to the Bengali editor and the
+English body, so each language can caption it in its own words. The first
+image in the body becomes the share card, so it is worth having one.
 
 ### Crediting people on a project
 

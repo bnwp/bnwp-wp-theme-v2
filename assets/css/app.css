@@ -826,6 +826,19 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .endedbar__text { display: grid; gap: .15rem; }
 }
 
+/* Images written into the body, which is where cover pictures live now. */
+.prose figure { margin: 1.75rem 0; }
+.prose figure img {
+  display: block; width: 100%; height: auto;
+  border-radius: var(--radius); border: 1px solid var(--line);
+}
+.prose figcaption {
+  margin-top: .55rem;
+  font-size: .875rem; line-height: 1.5; color: var(--ink-soft);
+}
+.prose figcaption a { color: var(--ink-soft); text-decoration: underline; }
+.prose figcaption a:hover { color: var(--accent); }
+
 /* Credit under a cover image: author, licence, source. Quieter than body
    text, and the link still has to be findable. */
 .cover__caption {

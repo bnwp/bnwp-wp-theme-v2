@@ -8,11 +8,10 @@ get_header();
 
 while (have_posts()) : the_post();
     $logo    = bnwp_get_meta('_bnwp_logo');
-    $cover   = bnwp_get_meta('_bnwp_cover');
     $wiki    = bnwp_get_meta('_bnwp_wiki');
     $wikitxt = bnwp_get_meta_i18n('_bnwp_wiki_label');
     $dates   = bnwp_project_dates();
-    $caption = bnwp_get_meta_i18n('_bnwp_cover_caption');
+
     $lead    = bnwp_get_meta_i18n('_bnwp_lead');
     $status  = bnwp_project_status();
     $archive = get_post_type_archive_link('project');
@@ -75,20 +74,6 @@ while (have_posts()) : the_post();
     <div class="section">
         <div class="wrap layout-aside">
             <div>
-                <?php if ($cover) : ?>
-                    <figure class="cover">
-                        <?php bnwp_image($cover, array(
-                            'w'     => 960,
-                            'alt'   => get_the_title(),
-                            'class' => 'project__cover',
-                            'fit'   => 'cover',
-                        )); ?>
-                        <?php if ($caption) : ?>
-                            <figcaption class="cover__caption"><?php echo wp_kses_post($caption); ?></figcaption>
-                        <?php endif; ?>
-                    </figure>
-                <?php endif; ?>
-
                 <div class="prose"><?php the_content(); ?></div>
             </div>
 

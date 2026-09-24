@@ -560,7 +560,7 @@ function bnwp_sanitize_media_ref($value) {
 
 /** Meta keys holding an image: a Media Library URL or a Commons file title. */
 function bnwp_media_meta_keys() {
-    return array('_bnwp_logo', '_bnwp_cover', '_bnwp_img');
+    return array('_bnwp_logo', '_bnwp_img');
 }
 
 /** Percent-encode a URL path so non-Latin filenames survive intact. */
@@ -712,9 +712,9 @@ function bnwp_image($url, $args = array()) {
  */
 function bnwp_meta_keys() {
     return array(
-        '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
+        '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
-        '_bnwp_cover_caption', '_bnwp_cover_caption_en', '_bnwp_wiki_label', '_bnwp_wiki_label_en',
+        '_bnwp_wiki_label', '_bnwp_wiki_label_en',
         '_bnwp_proj_lang', '_bnwp_proj_lang_en', '_bnwp_dates', '_bnwp_sortkey',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
@@ -726,14 +726,13 @@ function bnwp_meta_keys() {
 
 /** Meta holding rich text, which must keep its markup through sanitising. */
 function bnwp_richtext_meta_keys() {
-    return array('_bnwp_body_en', '_bnwp_cover_caption', '_bnwp_cover_caption_en');
+    return array('_bnwp_body_en');
 }
 
 /** Meta holding several lines, which sanitize_text_field would collapse. */
 function bnwp_multiline_meta_keys() {
     return array(
         '_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en',
-        '_bnwp_cover_caption', '_bnwp_cover_caption_en',
     );
 }
 
@@ -1283,10 +1282,24 @@ function bnwp_project_status($post_id = null) {
  */
 function bnwp_project_sortkey($post_id) {
     $parts = bnwp_parse_dates(get_post_meta($post_id, '_bnwp_dates', true));
-    $start = $parts ? sprintf('%04d%02d%02d', $parts[0]['y'], $parts[0]['m'], $parts[0]['d']) : '00000000';
+    $start = $parts ? (int) sprintf('%04d%02d%02d', $parts[0]['y'], $parts[0]['m'], $parts[0]['d']) : 0;
     $rank  = array('ongoing' => 3, 'upcoming' => 2, 'completed' => 1);
     $status = bnwp_project_status($post_id);
-    return (isset($rank[$status]) ? $rank[$status] : 0) . $start;
+    $group  = isset($rank[$status]) ? $rank[$status] : 0;
+
+    /*
+     * Everything is read back in one descending pass, so each group has to
+     * encode the direction it wants inside the key.
+     *
+     *   ongoing   — the one that started earliest has been running longest
+     *   upcoming  — the one starting soonest comes first
+     *   finished  — the most recent first
+     *
+     * The first two want ascending starts out of a descending sort, so their
+     * dates are subtracted from 99999999 and come back reversed.
+     */
+    $ascending = ($group === 3 || $group === 2);
+    return $group . sprintf('%08d', $ascending ? 99999999 - $start : $start);
 }
 
 /**
@@ -1736,20 +1749,36 @@ function bnwp_meta_description() {
     return get_bloginfo('description');
 }
 
+/** The first image in a body of text, which is the one a share card wants. */
+function bnwp_first_content_image($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $body    = bnwp_is_en() ? (string) get_post_meta($post_id, '_bnwp_body_en', true) : '';
+    if (trim($body) === '') {
+        $body = (string) get_post_field('post_content', $post_id);
+    }
+    if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $body, $m)) {
+        return $m[1];
+    }
+    return '';
+}
+
 function bnwp_og_image() {
     if (is_singular()) {
-        $cover = bnwp_get_meta('_bnwp_cover');
-        if ($cover === '') {
-            $cover = bnwp_get_meta('_bnwp_logo');
-        }
-        if ($cover === '') {
-            $cover = bnwp_get_meta('_bnwp_img');
-        }
-        if ($cover !== '') {
-            return bnwp_img_url($cover, 1200);
-        }
         if (has_post_thumbnail()) {
             return get_the_post_thumbnail_url(get_the_ID(), 'full');
+        }
+        // Cover images live in the body now, so the share card takes the
+        // first picture the article actually shows.
+        $inline = bnwp_first_content_image();
+        if ($inline !== '') {
+            return $inline;
+        }
+        $fallback = bnwp_get_meta('_bnwp_logo');
+        if ($fallback === '') {
+            $fallback = bnwp_get_meta('_bnwp_img');
+        }
+        if ($fallback !== '') {
+            return bnwp_img_url($fallback, 1200);
         }
     }
     return get_template_directory_uri() . '/assets/uploads/Bangla_WikiConnect_LOGO.png';
@@ -2001,42 +2030,103 @@ function bnwp_schema() {
     );
 
     if (is_singular('post')) {
-        $graph[] = array(
-            '@type'            => 'Article',
+        $author = bnwp_persona_by_key(bnwp_get_meta('_bnwp_user'));
+        $post_schema = array(
+            '@type'            => 'BlogPosting',
+            '@id'              => get_permalink() . '#article',
             'headline'         => wp_strip_all_tags(get_the_title()),
             'datePublished'    => bnwp_iso_date(),
             'dateModified'     => get_the_modified_date('c'),
             'inLanguage'       => bnwp_html_lang(),
             'description'      => bnwp_meta_description(),
             'image'            => bnwp_og_image(),
-            'mainEntityOfPage' => get_permalink(),
+            'wordCount'        => str_word_count(wp_strip_all_tags(get_the_content())),
+            'mainEntityOfPage' => array('@type' => 'WebPage', '@id' => get_permalink()),
             'publisher'        => array('@id' => home_url('/#organization')),
+            'isPartOf'         => array('@id' => home_url('/#organization')),
         );
+        $post_schema['author'] = $author
+            ? array('@type' => 'Person', 'name' => get_the_title($author->ID), 'url' => get_permalink($author->ID))
+            : array('@id' => home_url('/#organization'));
+        $graph[] = $post_schema;
     }
 
     if (is_singular('project')) {
-        $graph[] = array(
-            '@type'       => 'CreativeWork',
-            'name'        => wp_strip_all_tags(get_the_title()),
-            'description' => bnwp_meta_description(),
-            'inLanguage'  => bnwp_html_lang(),
-            'image'       => bnwp_og_image(),
-            'url'         => get_permalink(),
-            'creator'     => array('@id' => home_url('/#organization')),
+        /*
+         * A contest is an Event, not a generic CreativeWork: it has a start,
+         * an end and a way to attend, and describing it properly is what lets
+         * a search engine show the dates beside the result.
+         */
+        $parts  = bnwp_parse_dates(bnwp_get_meta('_bnwp_dates'));
+        $iso    = function ($p) { return sprintf('%04d-%02d-%02d', $p['y'], $p['m'], $p['d']); };
+        $state  = bnwp_project_status();
+        $wiki   = bnwp_get_meta('_bnwp_wiki');
+
+        $event = array(
+            '@type'                => 'Event',
+            '@id'                  => get_permalink() . '#event',
+            'name'                 => wp_strip_all_tags(get_the_title()),
+            'description'          => bnwp_meta_description(),
+            'inLanguage'           => bnwp_html_lang(),
+            'image'                => bnwp_og_image(),
+            'url'                  => get_permalink(),
+            'eventAttendanceMode'  => 'https://schema.org/OnlineEventAttendanceMode',
+            'eventStatus'          => 'https://schema.org/EventScheduled',
+            'organizer'            => array('@id' => home_url('/#organization')),
+            'isAccessibleForFree'  => true,
         );
+        if ($parts) {
+            $event['startDate'] = $iso($parts[0]);
+            $event['endDate']   = $iso(isset($parts[1]) ? $parts[1] : $parts[0]);
+        }
+        if ($wiki !== '') {
+            $event['location'] = array('@type' => 'VirtualLocation', 'url' => $wiki);
+        }
+        if ($state === 'completed') {
+            $event['eventStatus'] = 'https://schema.org/EventScheduled';
+        }
+        $graph[] = $event;
     }
 
     if (is_singular('persona')) {
-        $graph[] = array(
-            '@type'          => 'Person',
-            'name'           => wp_strip_all_tags(get_the_title()),
-            'alternateName'  => bnwp_get_meta('_bnwp_username'),
-            'description'    => bnwp_get_meta('_bnwp_bio'),
-            'jobTitle'       => bnwp_get_meta('_bnwp_role'),
-            'image'          => bnwp_og_image(),
-            'url'            => get_permalink(),
-            'memberOf'       => array('@id' => home_url('/#organization')),
+        // Their own accounts elsewhere, which is how a search engine works out
+        // that this page and those profiles are the same person.
+        $same = array();
+        $username = bnwp_get_meta('_bnwp_username');
+        if ($username !== '') {
+            $same[] = 'https://meta.wikimedia.org/wiki/User:' . rawurlencode($username);
+        }
+        foreach (bnwp_person_links() as $link) {
+            $same[] = $link['url'];
+        }
+        $external = bnwp_get_meta('_bnwp_link');
+        if ($external !== '') {
+            $same[] = $external;
+        }
+
+        $person = array(
+            '@type'         => 'Person',
+            '@id'           => get_permalink() . '#person',
+            'name'          => wp_strip_all_tags(get_the_title()),
+            'url'           => get_permalink(),
+            'image'         => bnwp_og_image(),
+            'memberOf'      => array('@id' => home_url('/#organization')),
+            'worksFor'      => array('@id' => home_url('/#organization')),
         );
+        // These follow the reader's language; the old version always emitted
+        // the Bengali, so the English pages described people in Bengali.
+        foreach (array('alternateName' => $username,
+                       'description'   => bnwp_get_meta_i18n('_bnwp_bio'),
+                       'jobTitle'      => bnwp_get_meta_i18n('_bnwp_role'),
+                       'homeLocation'  => bnwp_get_meta_i18n('_bnwp_location')) as $key => $value) {
+            if (trim((string) $value) !== '') {
+                $person[$key] = $value;
+            }
+        }
+        if ($same) {
+            $person['sameAs'] = array_values(array_unique($same));
+        }
+        $graph[] = $person;
     }
 
     $trail = bnwp_breadcrumb_trail();
@@ -2797,21 +2887,6 @@ function bnwp_field_media($label, $name, $value) {
 function bnwp_project_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_media(__('Logo', 'bnwp'), '_bnwp_logo', bnwp_get_meta('_bnwp_logo', $post->ID));
-    bnwp_field_media(__('Cover image', 'bnwp'), '_bnwp_cover', bnwp_get_meta('_bnwp_cover', $post->ID));
-    bnwp_field_textarea(
-        __('Cover caption', 'bnwp'),
-        '_bnwp_cover_caption',
-        bnwp_get_meta('_bnwp_cover_caption', $post->ID),
-        __('Shown under the cover image — author, licence and a link. Basic HTML is allowed, so <a href="…">CC BY-SA 4.0</a> works.', 'bnwp'),
-        3
-    );
-    bnwp_field_textarea(
-        __('Cover caption (English)', 'bnwp'),
-        '_bnwp_cover_caption_en',
-        bnwp_get_meta('_bnwp_cover_caption_en', $post->ID),
-        __('Leave empty to use the Bengali caption.', 'bnwp'),
-        3
-    );
     bnwp_field_text(__('Wiki URL', 'bnwp'), '_bnwp_wiki', bnwp_get_meta('_bnwp_wiki', $post->ID), 'url');
     bnwp_field_text(
         __('Wiki link text', 'bnwp'),
