@@ -80,6 +80,23 @@ while (have_posts()) : the_post();
                         <?php endif; ?>
                     </dl>
                 </div>
+
+                <?php $links = bnwp_person_links(); ?>
+                <?php if ($links) : ?>
+                    <div class="panel" style="margin-top:1.25rem;">
+                        <h2 class="panel__title"><?php echo esc_html(bnwp_text('অন্যান্য লিঙ্ক', 'Elsewhere')); ?></h2>
+                        <ul class="channels">
+                            <?php foreach ($links as $link) : ?>
+                                <li>
+                                    <a class="channel" href="<?php echo esc_url($link['url']); ?>" rel="noopener">
+                                        <span><?php echo esc_html($link['label']); ?></span>
+                                        <?php bnwp_external_mark(); ?>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
             </aside>
         </div>
     </div>

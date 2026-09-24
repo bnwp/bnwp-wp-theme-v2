@@ -675,7 +675,7 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
-        '_bnwp_organisers', '_bnwp_jury', '_bnwp_link',
+        '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
@@ -685,6 +685,57 @@ function bnwp_meta_keys() {
 /** Meta holding rich text, which must keep its markup through sanitising. */
 function bnwp_richtext_meta_keys() {
     return array('_bnwp_body_en');
+}
+
+/** Meta holding several lines, which sanitize_text_field would collapse. */
+function bnwp_multiline_meta_keys() {
+    return array('_bnwp_links', '_bnwp_excerpt_en');
+}
+
+/**
+ * How a given meta key is cleaned. Shared by the REST registration and the
+ * admin save handler so the two cannot drift apart - they did once, and every
+ * English body on the site was flattened before anyone noticed.
+ */
+function bnwp_meta_sanitizer($key) {
+    if (in_array($key, bnwp_richtext_meta_keys(), true)) {
+        return 'wp_kses_post';
+    }
+    if (in_array($key, bnwp_multiline_meta_keys(), true)) {
+        return 'sanitize_textarea_field';
+    }
+    return 'sanitize_text_field';
+}
+
+/**
+ * A person's social and profile links: one "Label | URL" per line.
+ *
+ * External jurors usually have no page on this site, and often no wiki account
+ * either, so this is where their public presence goes.
+ */
+function bnwp_person_links($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $raw     = (string) get_post_meta($post_id, '_bnwp_links', true);
+    $out     = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        $parts = array_map('trim', explode('|', $line, 2));
+        $url   = count($parts) === 2 ? $parts[1] : $parts[0];
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            continue;
+        }
+        $label = count($parts) === 2 ? $parts[0] : '';
+        if ($label === '') {
+            $host  = (string) wp_parse_url($url, PHP_URL_HOST);
+            $label = $host !== '' ? preg_replace('#^www\.#', '', $host) : $url;
+        }
+        $out[] = array('label' => $label, 'url' => $url);
+    }
+    return $out;
 }
 
 /**
@@ -735,17 +786,36 @@ function bnwp_personas_by_usernames($csv, $limit = 12) {
         return null;
     }
 
-    $q = new WP_Query(array(
+    // Matched on wiki username, or on slug for people who have no wiki
+    // account - bnwp_persona_choices() stores whichever of the two it had.
+    $by_name = get_posts(array(
         'post_type'      => 'persona',
         'posts_per_page' => $limit,
-        'no_found_rows'  => true,
-        'orderby'        => 'post__in',
+        'fields'         => 'ids',
         'meta_query'     => array(
             array('key' => '_bnwp_username', 'value' => $names, 'compare' => 'IN'),
         ),
     ));
+    $by_slug = get_posts(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => $limit,
+        'fields'         => 'ids',
+        'post_name__in'  => $names,
+    ));
 
-    return $q->have_posts() ? $q : null;
+    $ids = array_values(array_unique(array_merge($by_name, $by_slug)));
+    if (!$ids) {
+        return null;
+    }
+
+    $found = new WP_Query(array(
+        'post_type'      => 'persona',
+        'posts_per_page' => $limit,
+        'no_found_rows'  => true,
+        'post__in'       => $ids,
+        'orderby'        => 'post__in',
+    ));
+    return $found->have_posts() ? $found : null;
 }
 
 /** A compact list of people, used for the organiser and jury panels. */
@@ -925,16 +995,12 @@ function bnwp_register_content_types() {
         'auth_callback'     => function () { return current_user_can('manage_categories'); },
     ));
 
-    // The admin save path routes rich text through wp_kses_post; REST has to
-    // agree, or markup written over the API is silently flattened on the way
-    // into the database while the editor's own saves keep their tags.
-    $richtext = bnwp_richtext_meta_keys();
     foreach (bnwp_meta_keys() as $key) {
         register_post_meta('', $key, array(
             'type'              => 'string',
             'single'            => true,
             'show_in_rest'      => true,
-            'sanitize_callback' => in_array($key, $richtext, true) ? 'wp_kses_post' : 'sanitize_text_field',
+            'sanitize_callback' => bnwp_meta_sanitizer($key),
             'auth_callback'     => function () { return current_user_can('edit_posts'); },
         ));
     }
@@ -1838,6 +1904,18 @@ function bnwp_add_meta_boxes() {
 add_action('add_meta_boxes', 'bnwp_add_meta_boxes');
 
 /**
+ * Projects and people are edited through these fields far more than through
+ * the body, and the block editor hides registered meta boxes in a collapsed
+ * drawer below the content where nobody finds them. The classic editor puts
+ * them back in the page, which for a record made mostly of fields is simply
+ * the right screen. Posts and pages keep the block editor.
+ */
+function bnwp_classic_editor_post_types($use_block_editor, $post_type) {
+    return in_array($post_type, array('project', 'persona'), true) ? false : $use_block_editor;
+}
+add_filter('use_block_editor_for_post_type', 'bnwp_classic_editor_post_types', 10, 2);
+
+/**
  * The English half of the record.
  *
  * The Bengali side stays exactly where WordPress puts it — the normal title
@@ -1942,6 +2020,21 @@ function bnwp_field_text($label, $name, $value, $type = 'text') {
     );
 }
 
+function bnwp_field_textarea($label, $name, $value, $help = '', $rows = 4) {
+    printf(
+        '<p class="bnwp-field"><label for="%1$s">%2$s</label>'
+        . '<textarea class="widefat" id="%1$s" name="%1$s" rows="%4$d">%3$s</textarea>',
+        esc_attr($name),
+        esc_html($label),
+        esc_textarea($value),
+        (int) $rows
+    );
+    if ($help !== '') {
+        printf('<span class="description">%s</span>', esc_html($help));
+    }
+    echo '</p>';
+}
+
 function bnwp_field_select($label, $name, $value, $options) {
     printf('<p class="bnwp-field"><label for="%s">%s</label>', esc_attr($name), esc_html($label));
     printf('<select class="widefat" id="%1$s" name="%1$s">', esc_attr($name));
@@ -1994,11 +2087,15 @@ function bnwp_persona_choices() {
 
     $choices = array();
     foreach ($people as $person) {
+        // External jurors often have no wiki account at all, so fall back to
+        // the slug - otherwise they could never be picked for a project.
         $username = get_post_meta($person->ID, '_bnwp_username', true);
-        if ($username === '' || isset($choices[$username])) {
+        $key      = $username !== '' ? $username : $person->post_name;
+        if ($key === '' || isset($choices[$key])) {
             continue; // one entry per person, not one per language record
         }
-        $choices[$username] = $person->post_title . ' (@' . $username . ')';
+        $choices[$key] = $person->post_title
+            . ($username !== '' ? ' (@' . $username . ')' : ' - ' . __('external', 'bnwp'));
     }
     return $choices;
 }
@@ -2058,6 +2155,13 @@ function bnwp_persona_box($post) {
     echo '<p class="description" style="margin-top:-8px;">'
         . esc_html__('For guest or external jurors who have no page here: their cards link straight to this address instead of to a local profile.', 'bnwp')
         . '</p>';
+    bnwp_field_textarea(
+        __('Social links', 'bnwp'),
+        '_bnwp_links',
+        bnwp_get_meta('_bnwp_links', $post->ID),
+        __('One per line, as "Label | URL" — for example: Website | https://example.org. The label may be left off and the domain is used instead. Shown on this person\'s page.', 'bnwp'),
+        5
+    );
 }
 
 function bnwp_post_box($post) {
@@ -2092,9 +2196,10 @@ function bnwp_save_meta($post_id) {
             continue;
         }
 
-        if (in_array($key, bnwp_richtext_meta_keys(), true)) {
-            // the English body keeps its markup, filtered the same way a post is
-            update_post_meta($post_id, $key, wp_kses_post($raw));
+        if (in_array($key, bnwp_richtext_meta_keys(), true)
+            || in_array($key, bnwp_multiline_meta_keys(), true)) {
+            $clean = bnwp_meta_sanitizer($key);
+            update_post_meta($post_id, $key, $clean($raw));
             continue;
         }
 
@@ -2102,8 +2207,6 @@ function bnwp_save_meta($post_id) {
             $value = array_key_exists($raw, bnwp_project_statuses()) ? $raw : '';
         } elseif ($key === '_bnwp_language') {
             $value = in_array($raw, bnwp_langs(), true) ? $raw : 'bn';
-        } elseif ($key === '_bnwp_excerpt_en') {
-            $value = sanitize_textarea_field($raw);
         } elseif ($key === '_bnwp_email') {
             $value = sanitize_email($raw);
         } elseif (in_array($key, $url_keys, true)) {

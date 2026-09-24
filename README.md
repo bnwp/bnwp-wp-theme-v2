@@ -72,8 +72,15 @@ Details** box holds:
 | Organisers, Jury | Multi-select; Ctrl or Cmd click for several |
 
 Organisers and jury are stored by **wiki username**, not post ID, so one
-selection serves the project in both languages. Leave Jury empty and it falls
-back to everyone in the Jury team.
+selection serves the project in both languages. Someone with no wiki username
+is stored by slug instead, so external jurors can be selected too. Leave Jury
+empty and it falls back to everyone in the Jury team.
+
+Projects and team members use the **classic editor**. These records are mostly
+fields, and the block editor hides registered meta boxes in a collapsed drawer
+under the content where they are easy to miss entirely. Posts and pages keep
+the block editor; on those screens the **English version** box sits at the
+bottom, below the content.
 
 ### Adding a team member
 
@@ -81,8 +88,19 @@ back to everyone in the Jury team.
 username** — it is the key that links a person to the projects they work on.
 Tick a team (`cot`, `technical`, `jury`) in the Teams box.
 
-For a guest or external juror with no page here, set **External profile URL**.
-Their cards then link straight there, with an outward arrow.
+| Field | Notes |
+|---|---|
+| Display name, Role, Location | Role and Location have English twins |
+| Wiki username | Links the person to projects; leave empty for non-Wikimedians |
+| Profile image | Media Library, a full URL, or a Commons `File:Name.jpg` title |
+| External profile URL | Where their card points, instead of a local page |
+| Social links | One per line, `Label \| URL`. Shown in an **Elsewhere** panel |
+
+**External jurors.** Add them as a team member like anyone else: name, photo
+and whatever social links they have, ticked into the `jury` team. Leave **Wiki
+username** empty if they have none — they stay selectable in a project's Jury
+field, stored by slug. Setting **External profile URL** makes their cards link
+straight out, with an outward arrow, rather than to a thin local page.
 
 ### Adding a post
 

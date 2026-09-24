@@ -749,6 +749,9 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   color: var(--accent); transform: translateY(-2px);
 }
 .channel svg { width: 20px; height: 20px; flex: none; fill: currentColor; }
+/* The outline arrow marking an external link must not be filled like the
+   solid brand glyphs the .channel rule above is written for. */
+.channel .ext-mark { fill: none; margin-inline-start: auto; }
 
 .searchform { display: flex; gap: .5rem; }
 .searchform input[type="search"] {
