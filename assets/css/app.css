@@ -903,12 +903,19 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 /* --- 14. Partners ------------------------------------------------------- */
 
+/* A grid strands a lone partner at the left edge of the last row, because a
+   grid item goes in a column whether or not the row is full. Flex lets the
+   final row centre under the others; the basis keeps the same four-across
+   rhythm the grid had. */
 .partners {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  display: flex; flex-wrap: wrap; justify-content: center;
   gap: 1rem;
   max-width: 860px;
   margin-inline: auto;
+}
+.partner { flex: 0 1 calc(25% - .75rem); min-width: 160px; }
+@media (max-width: 560px) {
+  .partner { flex-basis: calc(50% - .5rem); min-width: 0; }
 }
 .partner {
   position: relative;
