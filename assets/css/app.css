@@ -504,19 +504,26 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .card__text { margin: 0; color: var(--ink-soft); font-size: .9688rem; flex: 1 0 auto; }
 
 /* project logo tile — real project logos, letterboxed on a neutral tile */
-/* Logos are often not square — wordmarks and lockups are usually wide. A
-   fixed square plate drew those at a fraction of the available size, so the
-   tile keeps a constant height and takes its width from the logo, staying
-   square only when the logo is. --tile-max-w stops a very wide lockup
-   running away with the row. */
+/* Logos are rarely square — some are wide lockups, some are tall. The plate
+   holds one height and the logo keeps its own proportions, so the box grows
+   or shrinks sideways to fit rather than the logo being squashed into a
+   square.
+
+   The logo's height is a length, never a percentage: a percentage height
+   resolves against the grid area, the grid area is sized by the logo, and
+   that circle makes the browser fall back to auto — which is how a 54px logo
+   once rendered at 181px and spilled across the card. */
 .logo-tile {
   --tile-h: 72px;
-  --tile-max-w: 150px;
+  --tile-pad: 9px;
+  --logo-max-w: 132px;
+  box-sizing: border-box;
   display: grid; place-items: center;
   height: var(--tile-h);
+  width: max-content;
   min-width: var(--tile-h);
   flex: none;
-  padding: 9px;
+  padding: var(--tile-pad);
   background: var(--bg-sunken);
   border-radius: 12px;
   transition: background var(--dur) var(--ease);
@@ -528,12 +535,12 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .grid > *:nth-child(3n + 2) .logo-tile { background: var(--accent-2-soft); }
 .grid > *:nth-child(3n + 3) .logo-tile { background: var(--accent-3-soft); }
 .logo-tile img {
-  height: 100%;
+  height: calc(var(--tile-h) - 2 * var(--tile-pad));
   width: auto;
-  max-width: var(--tile-max-w);
+  max-width: var(--logo-max-w);
   object-fit: contain;
 }
-.logo-tile--lg { --tile-h: 104px; --tile-max-w: 210px; padding: 12px; }
+.logo-tile--lg { --tile-h: 104px; --tile-pad: 12px; --logo-max-w: 186px; }
 
 /* The project mark in the hero.
    On a wide screen it had 104px of logo sitting in a 360px column and read as
@@ -548,8 +555,8 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 @media (min-width: 1000px) {
   .layout-aside--hero .logo-tile--lg {
     --tile-h: clamp(180px, 19vw, 260px);
-    --tile-max-w: clamp(230px, 24vw, 300px);
-    padding: clamp(16px, 2vw, 26px);
+    --tile-pad: clamp(16px, 2vw, 26px);
+    --logo-max-w: clamp(200px, 22vw, 272px);
     border-radius: 20px;
   }
 }
@@ -557,7 +564,7 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 @media (max-width: 999px) {
   .layout-aside--hero { gap: 1.25rem; }
   .layout-aside--hero > .hero-logo { order: -1; justify-self: start; }
-  .layout-aside--hero .logo-tile--lg { --tile-h: 92px; --tile-max-w: 190px; padding: 11px; }
+  .layout-aside--hero .logo-tile--lg { --tile-h: 92px; --tile-pad: 11px; --logo-max-w: 168px; }
 }
 
 .chip {
