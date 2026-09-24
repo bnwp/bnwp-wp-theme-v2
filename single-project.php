@@ -106,7 +106,7 @@ while (have_posts()) : the_post();
                             ?></a></dd>
                         <?php endif; ?>
                         <dt><?php echo esc_html(bnwp_text('ভাষা', 'Language')); ?></dt>
-                        <dd><?php echo esc_html(bnwp_is_en() ? 'English' : 'বাংলা'); ?></dd>
+                        <dd><?php echo esc_html(bnwp_project_language()); ?></dd>
                         <dt><?php echo esc_html(bnwp_text('আয়োজক', 'Organiser')); ?></dt>
                         <dd><?php echo esc_html(bnwp_site_name()); ?></dd>
                     </dl>

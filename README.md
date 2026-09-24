@@ -69,6 +69,7 @@ Details** box holds:
 | Wiki URL | The Meta or project page; drives the sidebar link |
 | Lead | One sentence. Used on cards and as the meta description |
 | Status | Ongoing / Upcoming / Completed — drives the coloured chip |
+| Contest language | The language the contest runs in, not the reader's. Empty means Bangla |
 | Organisers, Jury | One person per line — see below |
 
 ### Crediting people on a project

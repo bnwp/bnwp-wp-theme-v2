@@ -704,6 +704,7 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_cover_caption', '_bnwp_cover_caption_en', '_bnwp_wiki_label', '_bnwp_wiki_label_en',
+        '_bnwp_proj_lang', '_bnwp_proj_lang_en',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
@@ -1171,6 +1172,19 @@ function bnwp_person_rows($entries) {
         }
     }
     echo '</div>';
+}
+
+/**
+ * The language a contest is run in.
+ *
+ * This is a fact about the project, not about the reader: a Bangla Wikiquote
+ * contest is in Bangla whichever version of the site you are looking at. It
+ * used to echo the view language, so every project called itself English on
+ * the English site.
+ */
+function bnwp_project_language($post_id = null) {
+    $value = trim((string) bnwp_get_meta_i18n('_bnwp_proj_lang', $post_id));
+    return $value !== '' ? $value : bnwp_text('বাংলা', 'Bangla');
 }
 
 function bnwp_project_statuses() {
@@ -2622,6 +2636,19 @@ function bnwp_project_box($post) {
         . '</p>';
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
+    bnwp_field_text(
+        __('Contest language', 'bnwp'),
+        '_bnwp_proj_lang',
+        bnwp_get_meta('_bnwp_proj_lang', $post->ID)
+    );
+    bnwp_field_text(
+        __('Contest language (English)', 'bnwp'),
+        '_bnwp_proj_lang_en',
+        bnwp_get_meta('_bnwp_proj_lang_en', $post->ID)
+    );
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('The language the contest itself is run in — not the language somebody is reading the site in. Leave both empty for Bangla.', 'bnwp')
+        . '</p>';
 
     bnwp_field_textarea(
         __('Organisers', 'bnwp'),
