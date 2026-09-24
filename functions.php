@@ -1094,7 +1094,8 @@ remove_action('wp_head', 'wp_shortlink_wp_head');
  * 7. SEO
  *
  * Yoast is installed on this site. When it is active we stay out of its way
- * and only add what it does not do: hreflang for the ?lang=en twin.
+ * and only add what it does not do: hreflang for the /en/ twin, and correct
+ * the tags it builds from the raw post object (see bnwp_yoast_url below).
  * ---------------------------------------------------------------------- */
 
 function bnwp_yoast_active() {
@@ -1153,7 +1154,7 @@ function bnwp_og_image() {
 function bnwp_seo_head() {
     $canonical = bnwp_translation_url(bnwp_current_language());
 
-    // hreflang — always ours, Yoast does not know about the ?lang= twin.
+    // hreflang — always ours, Yoast does not know about the /en/ twin.
     printf(
         '<link rel="alternate" hreflang="bn" href="%s">' . "\n",
         esc_url(bnwp_translation_url('bn'))
@@ -1213,6 +1214,39 @@ function bnwp_yoast_og_image($image) {
     return $image;
 }
 add_filter('wpseo_opengraph_image', 'bnwp_yoast_og_image');
+
+/**
+ * Yoast builds its tags from the raw post object and the WP site name, so it
+ * knows nothing about /en/: every English page was canonicalising to its
+ * Bengali twin — which tells search engines not to index it — and carrying a
+ * Bengali <title>. Point Yoast at the current view instead. Bengali pages are
+ * left alone; Yoast is already right about those.
+ */
+function bnwp_yoast_url($url) {
+    return bnwp_is_en() ? bnwp_translation_url('en') : $url;
+}
+add_filter('wpseo_canonical', 'bnwp_yoast_url');
+add_filter('wpseo_opengraph_url', 'bnwp_yoast_url');
+
+function bnwp_yoast_title($title) {
+    if (!bnwp_is_en() || $title === '') {
+        return $title;
+    }
+    if (is_singular()) {
+        $bn = get_post_field('post_title', get_the_ID());
+        $en = get_post_meta(get_the_ID(), '_bnwp_title_en', true);
+        if ($bn !== '' && $en !== '') {
+            $title = str_replace($bn, $en, $title);
+        }
+    }
+    return str_replace(get_bloginfo('name'), bnwp_site_name(), $title);
+}
+add_filter('wpseo_title', 'bnwp_yoast_title');
+add_filter('wpseo_opengraph_title', 'bnwp_yoast_title');
+add_filter('wpseo_twitter_title', 'bnwp_yoast_title');
+
+/** og:locale follows the view, not the WP site locale (which is en_US here). */
+add_filter('wpseo_og_locale', 'bnwp_locale');
 
 /** The trail shown on single views, as data for search engines. */
 function bnwp_breadcrumb_trail() {
