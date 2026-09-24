@@ -534,6 +534,31 @@ function bnwp_commons_url($input) {
         . $hash[0] . '/' . substr($hash, 0, 2) . '/' . $title;
 }
 
+/**
+ * Clean a media reference, which may be a URL *or* a Commons file title.
+ *
+ * esc_url_raw() discards "File:Name.jpg" outright, because "file" is not an
+ * allowed protocol — so running it over these fields silently emptied every
+ * Commons title typed into the editor, while the identical value written over
+ * the REST API survived. bnwp_commons_url() accepts both forms; so must the
+ * saving. Keep this in step with the patterns it matches.
+ */
+function bnwp_sanitize_media_ref($value) {
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+    if (preg_match('#^(?:File|Image):#iu', $value)) {
+        return sanitize_text_field($value);
+    }
+    return esc_url_raw($value);
+}
+
+/** Meta keys holding an image: a Media Library URL or a Commons file title. */
+function bnwp_media_meta_keys() {
+    return array('_bnwp_logo', '_bnwp_cover', '_bnwp_img');
+}
+
 /** Percent-encode a URL path so non-Latin filenames survive intact. */
 function bnwp_encode_url($url) {
     $parts = wp_parse_url($url);
@@ -703,6 +728,9 @@ function bnwp_meta_sanitizer($key) {
     }
     if (in_array($key, bnwp_multiline_meta_keys(), true)) {
         return 'sanitize_textarea_field';
+    }
+    if (in_array($key, bnwp_media_meta_keys(), true)) {
+        return 'bnwp_sanitize_media_ref';
     }
     return 'sanitize_text_field';
 }
@@ -2444,7 +2472,7 @@ function bnwp_save_meta($post_id) {
         return;
     }
 
-    $url_keys = array('_bnwp_logo', '_bnwp_cover', '_bnwp_wiki', '_bnwp_img');
+    $media_keys = bnwp_media_meta_keys();
 
     foreach (bnwp_meta_keys() as $key) {
         if (!isset($_POST[$key])) {
@@ -2472,7 +2500,9 @@ function bnwp_save_meta($post_id) {
             $value = in_array($raw, bnwp_langs(), true) ? $raw : 'bn';
         } elseif ($key === '_bnwp_email') {
             $value = sanitize_email($raw);
-        } elseif (in_array($key, $url_keys, true)) {
+        } elseif (in_array($key, $media_keys, true)) {
+            $value = bnwp_sanitize_media_ref($raw);
+        } elseif ($key === '_bnwp_wiki') {
             $value = esc_url_raw($raw);
         } else {
             $value = sanitize_text_field($raw);
