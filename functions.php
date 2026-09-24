@@ -1248,6 +1248,89 @@ add_filter('wpseo_twitter_title', 'bnwp_yoast_title');
 /** og:locale follows the view, not the WP site locale (which is en_US here). */
 add_filter('wpseo_og_locale', 'bnwp_locale');
 
+/**
+ * Yoast's sitemap lists only the Bengali URLs, so the English pages were
+ * reachable through hreflang alone. Register a second sitemap holding the
+ * /en/ twin of every public URL and add it to Yoast's index.
+ *
+ * get_permalink() and friends are filtered to add /en/ only while the request
+ * itself is English, which a sitemap request is not — so each URL is passed
+ * through bnwp_lang_arg() explicitly.
+ */
+function bnwp_en_sitemap_entries() {
+    $urls = array(home_url('/') => '');
+
+    foreach (array('project', 'persona') as $type) {
+        $link = get_post_type_archive_link($type);
+        if ($link) {
+            $urls[$link] = '';
+        }
+    }
+
+    $terms = get_terms(array('taxonomy' => 'team', 'hide_empty' => true));
+    if (!is_wp_error($terms)) {
+        foreach ($terms as $term) {
+            $link = get_term_link($term);
+            if (!is_wp_error($link)) {
+                $urls[$link] = '';
+            }
+        }
+    }
+
+    $q = new WP_Query(array(
+        'post_type'      => array('post', 'page', 'project', 'persona'),
+        'post_status'    => 'publish',
+        'posts_per_page' => 1000,
+        'no_found_rows'  => true,
+        'orderby'        => 'modified',
+        'order'          => 'DESC',
+    ));
+    foreach ($q->posts as $post) {
+        $urls[get_permalink($post)] = mysql2date(DATE_W3C, $post->post_modified_gmt, false);
+    }
+
+    $out = array();
+    foreach ($urls as $url => $modified) {
+        $out[bnwp_lang_arg($url, 'en')] = $modified;
+    }
+    return $out;
+}
+
+function bnwp_en_sitemap_body() {
+    $xml = '';
+    foreach (bnwp_en_sitemap_entries() as $url => $modified) {
+        $xml .= "	<url>
+		<loc>" . esc_url($url) . "</loc>
+";
+        if ($modified !== '') {
+            $xml .= "		<lastmod>" . esc_html($modified) . "</lastmod>
+";
+        }
+        $xml .= "	</url>
+";
+    }
+    return $xml;
+}
+
+function bnwp_register_en_sitemap() {
+    if (isset($GLOBALS['wpseo_sitemaps']) && is_object($GLOBALS['wpseo_sitemaps'])) {
+        $GLOBALS['wpseo_sitemaps']->register_sitemap('en', 'bnwp_en_sitemap_body');
+    }
+}
+add_action('init', 'bnwp_register_en_sitemap', 99);
+
+function bnwp_en_sitemap_index($links) {
+    $modified = get_lastpostmodified('gmt');
+    $modified = $modified ? mysql2date(DATE_W3C, $modified, false) : gmdate(DATE_W3C);
+    return $links . "	<sitemap>
+		<loc>" . esc_url(home_url('/en-sitemap.xml'))
+        . "</loc>
+		<lastmod>" . esc_html($modified) . "</lastmod>
+	</sitemap>
+";
+}
+add_filter('wpseo_sitemap_index', 'bnwp_en_sitemap_index');
+
 /** The trail shown on single views, as data for search engines. */
 function bnwp_breadcrumb_trail() {
     $trail = array(array('name' => bnwp_text('প্রচ্ছদ', 'Home'), 'url' => home_url('/')));

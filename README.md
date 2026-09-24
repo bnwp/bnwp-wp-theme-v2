@@ -20,8 +20,9 @@ npm. Plain PHP, CSS custom properties and vanilla JavaScript.
   English and `১৬ লক্ষ+` in Bengali.
 - **Wikimedia Commons images** by URL, file-page link or `File:` title,
   resized to a width Commons will actually serve.
-- **SEO** — hreflang, Open Graph, Twitter cards and JSON-LD, all standing aside
-  when Yoast is active and filling its gaps when it has nothing better.
+- **SEO** — hreflang, Open Graph, Twitter cards, JSON-LD and an `/en/`
+  sitemap, all standing aside when Yoast is active and correcting the tags it
+  builds without knowing the site is bilingual.
 
 ## Requirements
 
@@ -53,7 +54,9 @@ The Bengali side is the normal WordPress title box and editor.
 record is never an empty page. An **EN** column on each list screen shows what
 still needs doing.
 
-Readers switch with the globe button in the header, which adds `?lang=en`.
+Readers switch with the globe button in the header, which moves between
+`/about/` and `/en/about/`. The older `?lang=en` addresses still work and
+301-redirect to their `/en/` equivalent.
 
 ### Adding a project
 
@@ -146,7 +149,10 @@ registered so old records keep their data, but nothing reads them.
 
 ### The bilingual layer
 
-`bnwp_current_language()` reads the URL and nothing else. Three filters do the
+`bnwp_current_language()` reads the URL and nothing else — an `/en/` path
+prefix, which `bnwp_parse_language_prefix()` strips before WordPress parses the
+request, so templates and queries only ever see the Bengali URL.
+`bnwp_lang_arg()` puts it back when building links. Three filters do the
 swapping — `bnwp_filter_title()`, `bnwp_filter_content()`,
 `bnwp_filter_excerpt()` — so templates call `the_title()` and `the_content()`
 normally. For meta, `bnwp_get_meta_i18n('_bnwp_lead')` returns `_bnwp_lead_en`

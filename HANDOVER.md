@@ -109,18 +109,27 @@ the migration. Delete them once you are confident.
 
 ### Language is chosen by URL only
 
-`?lang=en`. `bnwp_current_language()` reads nothing else.
+A `/en/` path prefix. `bnwp_current_language()` reads nothing else — no
+cookie, no session, no browser header.
 
-**This is the single biggest outstanding SEO problem.** Google's own
-documentation lists URL parameters as *"Not recommended"* for multilingual
-sites, and Google determines page language from visible content, not the `lang`
-attribute. The English pages are unlikely to be indexed properly as they are.
+`bnwp_parse_language_prefix()` runs on `do_parse_request` and strips the prefix
+from `REQUEST_URI` before WordPress parses it, so every template, query and
+rewrite rule sees the ordinary Bengali URL. `bnwp_lang_arg()` puts the prefix
+back when building links, and it is attached to the permalink filters
+(`post_link`, `term_link`, and the rest) so links stay in the reader's language
+without each template asking.
 
-**The fix, not yet done:** serve English from `/en/` subdirectories —
-`/en/about/` rather than `/about/?lang=en`. This is much easier now that one
-record serves both languages: it needs a rewrite rule that strips the `/en/`
-prefix and sets the language, permalink filters, and redirects from the old
-parameter URLs. Start here if you are picking the project up.
+The older `?lang=en` addresses 301-redirect to their `/en/` equivalent
+(`bnwp_redirect_legacy_lang()`), so anything already linked or indexed keeps
+working. Google lists URL parameters as *"Not recommended"* for multilingual
+sites, which is why this changed.
+
+Two things depend on the prefix and are easy to break: Yoast builds canonical,
+`og:url` and `<title>` from the raw post object and knows nothing about `/en/`,
+so `bnwp_yoast_url()` and `bnwp_yoast_title()` correct them — without those,
+every English page canonicalises to its Bengali twin and asks Google not to
+index it. And Yoast's sitemap lists only Bengali URLs, so the theme registers a
+second one at `/en-sitemap.xml` and adds it to Yoast's index.
 
 ### Images
 
@@ -175,12 +184,16 @@ staging site is retired), **Ally**.
 Inactive and safe to delete: **Elementor**, **Ultimate Addons for Elementor**,
 **Hello Dolly**. The v2 theme uses none of them.
 
-Should be activated: **LiteSpeed Cache** (the server is LiteSpeed; nothing is
-cached at present, and the database is struggling) and **Wordfence** — both are
-installed but switched off.
+**LiteSpeed Cache** is now active and doing the heavy lifting — it took TTFB
+from about a second to 120–270ms and stopped the intermittent "Error
+establishing a database connection". Purge it after any theme change, or you
+will spend an afternoon debugging cached HTML: **LiteSpeed Cache → Toolbox →
+Purge All**.
 
-**Redirect Redirection** becomes important when `/en/` URLs land, for
-redirecting the old `?lang=en` addresses.
+**Wordfence** is installed but still switched off.
+
+**Redirect Redirection** is not needed for the language URLs — the theme
+handles the `?lang=en` redirects itself.
 
 ---
 
