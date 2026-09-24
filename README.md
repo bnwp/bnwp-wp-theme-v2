@@ -145,6 +145,18 @@ The number is global: one running order used by the team page, every team
 filter and the core-team strip on the home page. Leave gaps (10, 20, 30) and
 inserting somebody later means editing one record rather than all of them.
 
+### The navigation menu
+
+**Appearance → Menus.** One menu serves both languages: each item has an
+**English label** box under its normal title, and leaving it empty falls back
+to the Bengali, the same bargain as everywhere else on the site. Links are
+rewritten to `/en/...` automatically, so you never add an item twice.
+
+There is a second location, *Primary Menu (English override)*, for the rare
+case of wanting a genuinely different English structure. Leave it unassigned
+unless you need it — an assigned menu there is a second thing to maintain, and
+that is precisely how the two menus drifted apart before.
+
 ### Ordering the teams themselves
 
 **Team Members → Teams** gives each team an **Order** box, working the same way

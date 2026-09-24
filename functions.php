@@ -37,8 +37,8 @@ function bnwp_setup() {
     add_image_size('bnwp-avatar', 320, 320, true);
 
     register_nav_menus(array(
-        'primary'    => __('Primary Menu (Bengali)', 'bnwp'),
-        'primary_en' => __('Primary Menu (English)', 'bnwp'),
+        'primary'    => __('Primary Menu', 'bnwp'),
+        'primary_en' => __('Primary Menu (English override — optional)', 'bnwp'),
         'footer'     => __('Footer Menu', 'bnwp'),
     ));
 }
@@ -1857,12 +1857,71 @@ function bnwp_primary_menu_fallback() {
 }
 
 /**
- * The assigned WP menu is authored in one language. Using it for both views
- * left the English site with a Bengali menu, so English prefers its own
- * menu location and otherwise falls back to the theme's English labels.
+ * An English label on each menu item, so one menu serves both languages.
+ *
+ * Two menu locations meant two menus to keep in step, and they drifted — the
+ * Bengali menu lost Projects and Contact while the English side, having no
+ * menu assigned at all, quietly showed the theme's built-in list instead. One
+ * menu with paired labels is the same bargain the rest of the site makes:
+ * leave the English box empty and the Bengali label is used.
+ */
+function bnwp_menu_item_field($item_id, $item, $depth, $args) {
+    $value = get_post_meta($item_id, '_bnwp_title_en', true);
+    ?>
+    <p class="field-bnwp-title-en description description-wide">
+        <label for="bnwp-title-en-<?php echo (int) $item_id; ?>">
+            <?php esc_html_e('English label', 'bnwp'); ?><br>
+            <input type="text" class="widefat" id="bnwp-title-en-<?php echo (int) $item_id; ?>"
+                   name="bnwp_menu_title_en[<?php echo (int) $item_id; ?>]"
+                   value="<?php echo esc_attr($value); ?>">
+            <span class="description"><?php esc_html_e('Shown when the site is read in English. Leave empty to use the label above.', 'bnwp'); ?></span>
+        </label>
+    </p>
+    <?php
+}
+add_action('wp_nav_menu_item_custom_fields', 'bnwp_menu_item_field', 10, 4);
+
+function bnwp_menu_item_save($menu_id, $item_id) {
+    if (!current_user_can('edit_theme_options')) {
+        return;
+    }
+    if (!isset($_POST['bnwp_menu_title_en']) || !is_array($_POST['bnwp_menu_title_en'])) {
+        return;
+    }
+    $all = wp_unslash($_POST['bnwp_menu_title_en']);
+    if (!isset($all[$item_id])) {
+        return;
+    }
+    $value = sanitize_text_field($all[$item_id]);
+    if ($value === '') {
+        delete_post_meta($item_id, '_bnwp_title_en');
+    } else {
+        update_post_meta($item_id, '_bnwp_title_en', $value);
+    }
+}
+add_action('wp_update_nav_menu_item', 'bnwp_menu_item_save', 10, 2);
+
+/** Swap in the English label on the front end. */
+function bnwp_menu_item_title($item) {
+    if (is_admin() || empty($item->ID) || !bnwp_is_en()) {
+        return $item;
+    }
+    $english = get_post_meta($item->ID, '_bnwp_title_en', true);
+    if (is_string($english) && $english !== '') {
+        $item->title = $english;
+    }
+    return $item;
+}
+add_filter('wp_setup_nav_menu_item', 'bnwp_menu_item_title');
+
+/**
+ * One menu drives both languages. A menu assigned to the English location is
+ * still honoured, for anyone who genuinely wants a different English
+ * structure; otherwise both read the same menu and the labels do the work.
+ * With no menu assigned at all, the theme's own list is used.
  */
 function bnwp_primary_nav() {
-    $location = bnwp_is_en() ? 'primary_en' : 'primary';
+    $location = (bnwp_is_en() && has_nav_menu('primary_en')) ? 'primary_en' : 'primary';
 
     if (has_nav_menu($location)) {
         wp_nav_menu(array(
@@ -2076,8 +2135,23 @@ function bnwp_social_icon($key) {
         'github'   => 'M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .3.3.7 1 .7 2v2.9c0 .3.2.6.7.5A10 10 0 0 0 12 2Z',
         'instagram'=> 'M12 7.4A4.6 4.6 0 1 0 12 16.6 4.6 4.6 0 0 0 12 7.4Zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm5.9-7.8a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0ZM21 8.1c-.1-1.5-.4-2.8-1.5-3.8C18.4 3.2 17.1 3 15.6 2.9 14.1 2.8 9.9 2.8 8.4 2.9 6.9 3 5.6 3.2 4.5 4.3 3.4 5.3 3.1 6.6 3 8.1c-.1 1.5-.1 5.8 0 7.3.1 1.5.4 2.8 1.5 3.8 1.1 1.1 2.4 1.3 3.9 1.4 1.5.1 5.7.1 7.2 0 1.5-.1 2.8-.3 3.9-1.4 1.1-1 1.4-2.3 1.5-3.8.1-1.5.1-5.8 0-7.3Zm-1.9 8.9c-.3.8-1 1.4-1.8 1.7-1.2.5-4.2.4-5.6.4s-4.4.1-5.6-.4c-.8-.3-1.5-.9-1.8-1.7-.5-1.2-.4-4.2-.4-5.6s-.1-4.4.4-5.6c.3-.8 1-1.4 1.8-1.7C7.3 3.6 10.3 3.7 11.7 3.7s4.4-.1 5.6.4c.8.3 1.5.9 1.8 1.7.5 1.2.4 4.2.4 5.6s.1 4.4-.4 5.6Z',
         'mastodon' => 'M12 2c-4 0-7 1-7 1S3 4.4 3 8.6c0 4.9-.3 9.3 4.4 10.6 1.8.5 3.3.6 4.5.5 2.2-.1 3.4-.8 3.4-.8l-.1-1.6s-1.6.5-3.3.4c-1.7-.1-3.5-.2-3.8-2.3 0-.2 0-.4 0-.6 3.7.9 6.8.4 7.7.3 2.4-.3 4.5-1.8 4.8-3.2.4-2.2.4-5.3.4-5.3C21 4.4 19 3 19 3s-3-1-7-1Zm4.4 10.2h-1.9V8.6c0-1-.4-1.5-1.3-1.5-1 0-1.4.6-1.4 1.8v2.5h-1.8V8.9c0-1.2-.5-1.8-1.4-1.8-.9 0-1.3.5-1.3 1.5v3.6H5.4V8.5c0-1 .3-1.8.8-2.4.5-.6 1.2-.9 2.1-.9 1 0 1.8.4 2.3 1.2l.5.8.5-.8c.5-.8 1.3-1.2 2.3-1.2.9 0 1.6.3 2.1.9.5.6.8 1.4.8 2.4v3.7Z',
+        'twitter'  => 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z',
+    );
+    // What a channel is called and what its glyph is keyed under are not the
+    // same thing: the site is listed as "twitter" and the logo is X's.
+    $aliases = array(
+        'x'       => 'twitter',
+        'x/twitter' => 'twitter',
+        'twitter/x' => 'twitter',
+        'fb'      => 'facebook',
+        'yt'      => 'youtube',
+        'ig'      => 'instagram',
+        'in'      => 'linkedin',
     );
     $key = strtolower(trim($key));
+    if (isset($aliases[$key])) {
+        $key = $aliases[$key];
+    }
     // the fallback is a filled glyph too, since .channel svg uses fill
     return isset($icons[$key])
         ? $icons[$key]
