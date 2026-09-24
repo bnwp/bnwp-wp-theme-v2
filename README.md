@@ -68,9 +68,19 @@ Details** box holds:
 | Logo, Cover image | Media Library, a full URL, or a Commons `File:Name.svg` title |
 | Wiki URL | The Meta or project page; drives the sidebar link |
 | Lead | One sentence. Used on cards and as the meta description |
-| Status | Ongoing / Upcoming / Completed — drives the coloured chip |
+| Timeline | `2025-05-07 - 2025-06-07`. Written out in words in both languages |
 | Contest language | The language the contest runs in, not the reader's. Empty means Bangla |
 | Organisers, Jury | One person per line — see below |
+
+**Status is not a field.** Ongoing, Upcoming and Completed are read off the
+Timeline against today's date, so a contest stops calling itself চলমান the
+morning after it ends and nobody has to remember. A project with no timeline
+shows no chip.
+
+Listings — the home page and the projects archive — put ongoing first, then
+upcoming, then finished, with the most recent start first inside each group.
+That order comes from a key rebuilt whenever a project is saved and once a day
+on cron, since the answer changes with the calendar rather than with edits.
 
 ### Crediting people on a project
 

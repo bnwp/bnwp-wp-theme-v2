@@ -14,7 +14,7 @@ while (have_posts()) : the_post();
     $dates   = bnwp_project_dates();
     $caption = bnwp_get_meta_i18n('_bnwp_cover_caption');
     $lead    = bnwp_get_meta_i18n('_bnwp_lead');
-    $status  = bnwp_get_meta('_bnwp_status');
+    $status  = bnwp_project_status();
     $archive = get_post_type_archive_link('project');
 ?>
 

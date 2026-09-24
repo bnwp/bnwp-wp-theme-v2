@@ -1250,17 +1250,70 @@ function bnwp_project_dates($post_id = null) {
 }
 
 /**
+ * Whether a contest is upcoming, running or over — worked out from its dates.
+ *
+ * This used to be a dropdown somebody had to remember to change, which meant
+ * a finished contest went on calling itself চলমান until it was noticed. The
+ * dates already say when it ran, so they decide. A project with no dates has
+ * no status and shows no chip.
+ */
+function bnwp_project_status($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $parts   = bnwp_parse_dates(get_post_meta($post_id, '_bnwp_dates', true));
+    if (!$parts) {
+        return '';
+    }
+    $ymd   = function ($p) { return sprintf('%04d%02d%02d', $p['y'], $p['m'], $p['d']); };
+    $today = current_time('Ymd');
+    $start = $ymd($parts[0]);
+    $end   = $ymd(isset($parts[1]) ? $parts[1] : $parts[0]);
+
+    if ($today < $start) { return 'upcoming'; }
+    if ($today > $end)   { return 'completed'; }
+    return 'ongoing';
+}
+
+/**
  * A single number a listing can sort on: ongoing first, then upcoming, then
  * finished, and within each the most recent start first. Kept in meta so the
  * database does the ordering instead of PHP paging through everything.
+ *
+ * Because the status now moves with the calendar, so does this key — see
+ * bnwp_refresh_sortkeys(), which rebuilds them daily.
  */
 function bnwp_project_sortkey($post_id) {
     $parts = bnwp_parse_dates(get_post_meta($post_id, '_bnwp_dates', true));
     $start = $parts ? sprintf('%04d%02d%02d', $parts[0]['y'], $parts[0]['m'], $parts[0]['d']) : '00000000';
-    $rank  = array('ongoing' => 3, 'upcoming' => 2);
-    $status = (string) get_post_meta($post_id, '_bnwp_status', true);
-    return (isset($rank[$status]) ? $rank[$status] : 1) . $start;
+    $rank  = array('ongoing' => 3, 'upcoming' => 2, 'completed' => 1);
+    $status = bnwp_project_status($post_id);
+    return (isset($rank[$status]) ? $rank[$status] : 0) . $start;
 }
+
+/**
+ * Rebuild every project's sort key.
+ *
+ * A contest that ended overnight has to fall out of the ongoing group without
+ * anyone editing it, so this runs daily as well as on save.
+ */
+function bnwp_refresh_sortkeys() {
+    foreach (get_posts(array(
+        'post_type'      => 'project',
+        'posts_per_page' => -1,
+        'post_status'    => 'any',
+        'fields'         => 'ids',
+    )) as $id) {
+        update_post_meta($id, '_bnwp_sortkey', bnwp_project_sortkey($id));
+    }
+}
+add_action('bnwp_refresh_sortkeys', 'bnwp_refresh_sortkeys');
+
+function bnwp_schedule_sortkeys() {
+    if (!wp_next_scheduled('bnwp_refresh_sortkeys')) {
+        wp_schedule_event(time() + 300, 'daily', 'bnwp_refresh_sortkeys');
+    }
+}
+add_action('init', 'bnwp_schedule_sortkeys');
+add_action('after_switch_theme', 'bnwp_refresh_sortkeys');
 
 function bnwp_save_project_sortkey($post_id) {
     if (get_post_type($post_id) !== 'project' || wp_is_post_revision($post_id)) {
@@ -1269,6 +1322,22 @@ function bnwp_save_project_sortkey($post_id) {
     update_post_meta($post_id, '_bnwp_sortkey', bnwp_project_sortkey($post_id));
 }
 add_action('save_post', 'bnwp_save_project_sortkey', 20);
+
+/**
+ * ...and again once the dates themselves have landed.
+ *
+ * The REST API saves the post first and its meta second, so save_post runs
+ * while _bnwp_dates still holds the previous value — every key built that way
+ * came out with a start date of 00000000. Watching the meta write closes it.
+ * No recursion: the key written here is _bnwp_sortkey, which this ignores.
+ */
+function bnwp_sortkey_after_meta($meta_id, $post_id, $meta_key) {
+    if ($meta_key === '_bnwp_dates') {
+        bnwp_save_project_sortkey($post_id);
+    }
+}
+add_action('added_post_meta', 'bnwp_sortkey_after_meta', 10, 3);
+add_action('updated_post_meta', 'bnwp_sortkey_after_meta', 10, 3);
 
 /**
  * Order project listings by that key.
@@ -2758,7 +2827,6 @@ function bnwp_project_box($post) {
         . esc_html__('What the Wiki row in the At a glance panel reads. Leave empty and the domain is shown.', 'bnwp')
         . '</p>';
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
-    bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
     bnwp_field_text(
         __('Timeline', 'bnwp'),
         '_bnwp_dates',
@@ -2766,6 +2834,12 @@ function bnwp_project_box($post) {
     );
     echo '<p class="description" style="margin-top:-8px;">'
         . esc_html__('When the contest ran, as 2025-05-07 - 2025-06-07. Written out in words in both languages, and used to order the project listings. One date on its own is fine.', 'bnwp')
+        . '</p>';
+    $bnwp_now = bnwp_project_status($post->ID);
+    echo '<p class="description" style="margin-top:-4px;"><strong>'
+        . esc_html__('Status:', 'bnwp') . '</strong> '
+        . esc_html($bnwp_now ? bnwp_project_status_label($bnwp_now) : __('set a timeline and this follows automatically', 'bnwp'))
+        . ' — ' . esc_html__('worked out from the dates above, so there is nothing to keep up to date by hand.', 'bnwp')
         . '</p>';
     bnwp_field_text(
         __('Contest language', 'bnwp'),

@@ -87,7 +87,7 @@ if ($projects->have_posts()) : ?>
             <?php while ($projects->have_posts()) : $projects->the_post();
                 $logo   = bnwp_get_meta('_bnwp_logo');
                 $lead   = bnwp_get_meta_i18n('_bnwp_lead');
-                $status = bnwp_get_meta('_bnwp_status');
+                $status = bnwp_project_status();
             ?>
             <article class="card reveal">
                 <div class="card__top">
