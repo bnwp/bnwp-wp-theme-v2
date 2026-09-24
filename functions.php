@@ -1925,7 +1925,6 @@ add_filter('use_block_editor_for_post_type', 'bnwp_classic_editor_post_types', 1
 function bnwp_english_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
 
-    $has_body = in_array($post->post_type, array('post', 'page', 'project'), true);
     ?>
     <p class="description" style="margin:0 0 14px;">
         <?php esc_html_e('Leave a field blank to fall back to the Bengali. Readers see this when the site is viewed in English.', 'bnwp'); ?>
@@ -1938,31 +1937,29 @@ function bnwp_english_box($post) {
                style="font-size:1.4em;padding:6px 8px;">
     </p>
 
-    <?php if ($has_body) : ?>
-        <p class="bnwp-field" style="margin-bottom:4px;">
-            <label for="_bnwp_body_en"><strong><?php esc_html_e('English body', 'bnwp'); ?></strong></label>
-        </p>
-        <?php
-        wp_editor(
-            bnwp_get_meta('_bnwp_body_en', $post->ID),
-            '_bnwp_body_en',
-            array(
-                'textarea_name' => '_bnwp_body_en',
-                'textarea_rows' => 14,
-                'media_buttons' => true,
-                'teeny'         => false,
-                'quicktags'     => true,
-            )
-        );
-        ?>
+    <p class="bnwp-field" style="margin-bottom:4px;">
+        <label for="_bnwp_body_en"><strong><?php esc_html_e('English body', 'bnwp'); ?></strong></label>
+    </p>
+    <?php
+    wp_editor(
+        bnwp_get_meta('_bnwp_body_en', $post->ID),
+        '_bnwp_body_en',
+        array(
+            'textarea_name' => '_bnwp_body_en',
+            'textarea_rows' => 14,
+            'media_buttons' => true,
+            'teeny'         => false,
+            'quicktags'     => true,
+        )
+    );
+    ?>
 
-        <p class="bnwp-field" style="margin-top:14px;">
-            <label for="_bnwp_excerpt_en"><strong><?php esc_html_e('English excerpt', 'bnwp'); ?></strong></label>
-            <textarea class="widefat" rows="2" id="_bnwp_excerpt_en" name="_bnwp_excerpt_en"><?php
-                echo esc_textarea(bnwp_get_meta('_bnwp_excerpt_en', $post->ID));
-            ?></textarea>
-        </p>
-    <?php endif; ?>
+    <p class="bnwp-field" style="margin-top:14px;">
+        <label for="_bnwp_excerpt_en"><strong><?php esc_html_e('English excerpt', 'bnwp'); ?></strong></label>
+        <textarea class="widefat" rows="2" id="_bnwp_excerpt_en" name="_bnwp_excerpt_en"><?php
+            echo esc_textarea(bnwp_get_meta('_bnwp_excerpt_en', $post->ID));
+        ?></textarea>
+    </p>
 
     <?php if ($post->post_type === 'project') : ?>
         <?php bnwp_field_text(__('English lead / summary', 'bnwp'), '_bnwp_lead_en', bnwp_get_meta('_bnwp_lead_en', $post->ID)); ?>
