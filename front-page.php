@@ -162,6 +162,7 @@ $people_args = array(
         array('taxonomy' => 'team', 'field' => 'slug', 'terms' => bnwp_former_team(), 'operator' => 'NOT IN'),
     ),
     'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
+    'bnwp_people_order' => true,
 );
 $people = new WP_Query($people_args);
 if ($people->have_posts()) : ?>

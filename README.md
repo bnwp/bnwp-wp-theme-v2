@@ -136,10 +136,14 @@ single contest, use **Guest jury** on the project instead.
 ### Ordering team members
 
 Each team member has an **Order** box (in the sidebar, under Attributes). Lower
-numbers come first; people sharing a number fall back to alphabetical order.
-The number is global — one running order used by the team page, every team
-filter and the core-team strip on the home page — so leave gaps (10, 20, 30)
-and inserting somebody later means editing one record, not all of them.
+numbers come first, and **0 means unranked**, so anyone you have not numbered
+falls below everyone you have — setting one person to 1 is enough to put them
+at the top without touching anybody else. People sharing a number, 0 included,
+are alphabetical among themselves.
+
+The number is global: one running order used by the team page, every team
+filter and the core-team strip on the home page. Leave gaps (10, 20, 30) and
+inserting somebody later means editing one record rather than all of them.
 
 ### Former members
 

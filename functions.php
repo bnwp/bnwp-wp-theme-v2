@@ -725,9 +725,29 @@ function bnwp_is_former($post_id = null) {
 }
 
 /**
+ * Order people by the Order box, with unnumbered people last.
+ *
+ * WordPress defaults menu_order to 0, so a plain ascending sort puts everyone
+ * who has never been given a number *above* the first person who has — set
+ * one person to 1 and they go to the back, which is the opposite of what
+ * anyone means by it. Zero therefore reads as "unranked" here and sorts last,
+ * so numbering a single person is enough to pin them to the top and the rest
+ * can be left alone.
+ */
+function bnwp_people_orderby($orderby, $query) {
+    if (!$query->get('bnwp_people_order')) {
+        return $orderby;
+    }
+    global $wpdb;
+    return "CASE WHEN {$wpdb->posts}.menu_order = 0 THEN 1 ELSE 0 END ASC, "
+         . "{$wpdb->posts}.menu_order ASC, {$wpdb->posts}.post_title ASC";
+}
+add_filter('posts_orderby', 'bnwp_people_orderby', 10, 2);
+
+/**
  * People are listed in the order set by the Order box on each team member,
- * lowest first, and alphabetically within the same number. Without this they
- * come back newest-first, which is meaningless for a team.
+ * lowest first, then everyone unnumbered, alphabetically within each group.
+ * Without this they come back newest-first, which is meaningless for a team.
  */
 function bnwp_order_people($query) {
     if (is_admin() || !$query->is_main_query()) {
@@ -737,6 +757,7 @@ function bnwp_order_people($query) {
         return;
     }
     $query->set('orderby', array('menu_order' => 'ASC', 'title' => 'ASC'));
+    $query->set('bnwp_people_order', true);
 
     // The main listing is the current team; former members get their own
     // section further down the page. Asking for the former team directly
@@ -759,6 +780,7 @@ function bnwp_former_people($limit = 100) {
         'posts_per_page' => $limit,
         'no_found_rows'  => true,
         'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
+        'bnwp_people_order' => true,
         'tax_query'      => array(array(
             'taxonomy' => 'team',
             'field'    => 'slug',
