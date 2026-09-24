@@ -1249,6 +1249,65 @@ function bnwp_project_dates($post_id = null) {
 }
 
 /**
+ * The other editions of the same contest.
+ *
+ * Slugs here end in a year — wiki-quote-2025, wiki-quote-2026 — so dropping it
+ * gives the family. Linking the editions to each other is worth more than the
+ * random picks that used to fill this block: a fixed, meaningful link is one a
+ * search engine can follow and a reader can use, and random ones gave crawlers
+ * a different page every visit.
+ */
+function bnwp_project_family($slug) {
+    return preg_replace('/-(?:19|20)\d{2}$/', '', (string) $slug);
+}
+
+function bnwp_related_projects($limit = 3) {
+    $current = get_post();
+    if (!$current) {
+        return null;
+    }
+    $family = bnwp_project_family($current->post_name);
+
+    $siblings = array();
+    foreach (get_posts(array(
+        'post_type'      => 'project',
+        'posts_per_page' => -1,
+        'post__not_in'   => array($current->ID),
+        'fields'         => 'ids',
+    )) as $id) {
+        if (bnwp_project_family(get_post_field('post_name', $id)) === $family) {
+            $siblings[] = $id;
+        }
+    }
+
+    // Other editions first, then whatever the listing would show next, so the
+    // block is always full without ever being random.
+    $ids = $siblings;
+    if (count($ids) < $limit) {
+        $fill = get_posts(bnwp_project_order_args(array(
+            'post_type'      => 'project',
+            'posts_per_page' => $limit - count($ids),
+            'post__not_in'   => array_merge(array($current->ID), $ids),
+            'fields'         => 'ids',
+        )));
+        $ids = array_merge($ids, $fill);
+    }
+    $ids = array_slice($ids, 0, $limit);
+    if (!$ids) {
+        return null;
+    }
+
+    $q = new WP_Query(array(
+        'post_type'      => 'project',
+        'posts_per_page' => $limit,
+        'post__in'       => $ids,
+        'orderby'        => 'post__in',
+        'no_found_rows'  => true,
+    ));
+    return $q->have_posts() ? $q : null;
+}
+
+/**
  * Whether a contest is upcoming, running or over — worked out from its dates.
  *
  * This used to be a dropdown somebody had to remember to change, which meant
@@ -2081,9 +2140,36 @@ function bnwp_schema() {
         }
         if ($wiki !== '') {
             $event['location'] = array('@type' => 'VirtualLocation', 'url' => $wiki);
+            // The contest page on the wiki is the authoritative record of it.
+            $event['sameAs'] = $wiki;
         }
-        if ($state === 'completed') {
-            $event['eventStatus'] = 'https://schema.org/EventScheduled';
+        // Entering costs nothing, and saying so explicitly is what lets a
+        // result carry a "free" label rather than leaving price unknown.
+        $event['offers'] = array(
+            '@type'         => 'Offer',
+            'price'         => '0',
+            'priceCurrency' => 'BDT',
+            'availability'  => 'https://schema.org/InStock',
+            'url'           => $wiki !== '' ? $wiki : get_permalink(),
+            'validFrom'     => $parts ? $iso($parts[0]) : null,
+        );
+        $event['offers'] = array_filter($event['offers'], function ($v) { return $v !== null; });
+
+        // Everyone credited on the project, which ties the people pages to the
+        // contests they ran and back again.
+        $people = array();
+        foreach (array_merge(bnwp_people_entries(bnwp_get_meta('_bnwp_organisers')),
+                             bnwp_people_entries(bnwp_get_meta('_bnwp_jury'))) as $entry) {
+            if ($entry['type'] === 'persona') {
+                $people[] = array(
+                    '@type' => 'Person',
+                    'name'  => wp_strip_all_tags(get_the_title($entry['post']->ID)),
+                    'url'   => get_permalink($entry['post']->ID),
+                );
+            }
+        }
+        if ($people) {
+            $event['contributor'] = $people;
         }
         $graph[] = $event;
     }

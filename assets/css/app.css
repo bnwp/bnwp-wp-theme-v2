@@ -752,7 +752,8 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .cover { margin-bottom: 1.5rem; }
   .cover img, .project__cover { max-height: 46vh; border-radius: var(--radius-sm); }
 }
-.prose figcaption { font-size: .875rem; color: var(--ink-soft); text-align: center; margin-top: .5rem; }
+.prose figcaption,
+.prose .wp-caption-text { font-size: .875rem; color: var(--ink-soft); text-align: center; margin-top: .5rem; }
 .prose blockquote {
   margin: 1.6em 0; padding: .25em 0 .25em 1.25em;
   border-inline-start: 3px solid var(--accent);
@@ -826,7 +827,11 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .endedbar__text { display: grid; gap: .15rem; }
 }
 
-/* Images written into the body, which is where cover pictures live now. */
+/* Images written into the body, which is where cover pictures live now.
+   WordPress's [caption] renders as a figure too (the theme declares html5
+   caption support), so both shapes land on the same rules. */
+.prose figure,
+.prose .wp-caption { margin: 1.75rem 0; max-width: 100% !important; }
 .prose figure { margin: 1.75rem 0; }
 .prose figure img {
   display: block; width: 100%; height: auto;
@@ -836,8 +841,10 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   margin-top: .55rem;
   font-size: .875rem; line-height: 1.5; color: var(--ink-soft);
 }
-.prose figcaption a { color: var(--ink-soft); text-decoration: underline; }
-.prose figcaption a:hover { color: var(--accent); }
+.prose figcaption a,
+.prose .wp-caption-text a { color: var(--ink-soft); text-decoration: underline; }
+.prose figcaption a:hover,
+.prose .wp-caption-text a:hover { color: var(--accent); }
 
 /* Credit under a cover image: author, licence, source. Quieter than body
    text, and the link still has to be findable. */

@@ -128,15 +128,8 @@ while (have_posts()) : the_post();
     </div>
 
     <?php
-    $related_args = array(
-        'post_type'      => 'project',
-        'posts_per_page' => 3,
-        'post__not_in'   => array(get_the_ID()),
-        'no_found_rows'  => true,
-        'orderby'        => 'rand',
-    );
-    $related = new WP_Query($related_args);
-    if ($related->have_posts()) : ?>
+    $related = bnwp_related_projects(3);
+    if ($related) : ?>
     <section class="section section--sunken">
         <div class="wrap">
             <h2 style="font-size:var(--step-3);margin-bottom:1.75rem;"><?php echo esc_html(bnwp_text('সম্পর্কিত প্রকল্প', 'Related projects')); ?></h2>
