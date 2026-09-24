@@ -649,7 +649,18 @@ function bnwp_image($url, $args = array()) {
             $attrs['loading'] = $a['loading'];
         }
 
-        $size = array((int) $a['w'], (int) ($a['h'] ? $a['h'] : $a['w']));
+        /*
+         * A height means a box to fill — an avatar — and WordPress should
+         * hand back one of its cropped square sizes. With no height the image
+         * is a logo, and asking for array($w, $w) made WordPress serve the
+         * hard-cropped 150x150 thumbnail: a wide logo came back with its ends
+         * cut off. Named uncropped sizes keep the shape.
+         */
+        if ($a['h']) {
+            $size = array((int) $a['w'], (int) $a['h']);
+        } else {
+            $size = (int) $a['w'] <= 300 ? 'medium' : 'large';
+        }
         echo wp_get_attachment_image($attachment, $size, false, $attrs);
         return;
     }

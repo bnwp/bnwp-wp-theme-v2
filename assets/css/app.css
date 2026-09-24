@@ -504,9 +504,18 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .card__text { margin: 0; color: var(--ink-soft); font-size: .9688rem; flex: 1 0 auto; }
 
 /* project logo tile — real project logos, letterboxed on a neutral tile */
+/* Logos are often not square — wordmarks and lockups are usually wide. A
+   fixed square plate drew those at a fraction of the available size, so the
+   tile keeps a constant height and takes its width from the logo, staying
+   square only when the logo is. --tile-max-w stops a very wide lockup
+   running away with the row. */
 .logo-tile {
+  --tile-h: 72px;
+  --tile-max-w: 150px;
   display: grid; place-items: center;
-  width: 72px; height: 72px; flex: none;
+  height: var(--tile-h);
+  min-width: var(--tile-h);
+  flex: none;
   padding: 9px;
   background: var(--bg-sunken);
   border-radius: 12px;
@@ -518,8 +527,13 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .grid > *:nth-child(3n + 1) .logo-tile { background: var(--accent-soft); }
 .grid > *:nth-child(3n + 2) .logo-tile { background: var(--accent-2-soft); }
 .grid > *:nth-child(3n + 3) .logo-tile { background: var(--accent-3-soft); }
-.logo-tile img { width: 100%; height: 100%; object-fit: contain; }
-.logo-tile--lg { width: 104px; height: 104px; padding: 12px; }
+.logo-tile img {
+  height: 100%;
+  width: auto;
+  max-width: var(--tile-max-w);
+  object-fit: contain;
+}
+.logo-tile--lg { --tile-h: 104px; --tile-max-w: 210px; padding: 12px; }
 
 /* The project mark in the hero.
    On a wide screen it had 104px of logo sitting in a 360px column and read as
@@ -533,8 +547,8 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 
 @media (min-width: 1000px) {
   .layout-aside--hero .logo-tile--lg {
-    width: clamp(180px, 19vw, 260px);
-    height: clamp(180px, 19vw, 260px);
+    --tile-h: clamp(180px, 19vw, 260px);
+    --tile-max-w: clamp(230px, 24vw, 300px);
     padding: clamp(16px, 2vw, 26px);
     border-radius: 20px;
   }
@@ -543,7 +557,7 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 @media (max-width: 999px) {
   .layout-aside--hero { gap: 1.25rem; }
   .layout-aside--hero > .hero-logo { order: -1; justify-self: start; }
-  .layout-aside--hero .logo-tile--lg { width: 92px; height: 92px; padding: 11px; }
+  .layout-aside--hero .logo-tile--lg { --tile-h: 92px; --tile-max-w: 190px; padding: 11px; }
 }
 
 .chip {
