@@ -414,8 +414,12 @@ function bnwp_nav_link_attr($atts, $item, $args, $depth) {
 
     $href = $atts['href'];
 
-    // "/about/" -> home_url('/about/'). Leaves "//host", "http(s)://" and "#" alone.
-    if (strlen($href) > 1 && $href[0] === '/' && $href[1] !== '/') {
+    // "/about/" -> home_url('/about/'). Leaves "//host", "http(s)://" and "#"
+    // alone. A bare "/" is the Home item and has to be handled on its own, or
+    // the length guard skips it and it never picks up the /en/ prefix.
+    if ($href === '/') {
+        $href = home_url('/');
+    } elseif (strlen($href) > 1 && $href[0] === '/' && $href[1] !== '/') {
         $href = home_url($href);
     }
 
