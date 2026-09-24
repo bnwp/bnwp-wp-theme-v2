@@ -29,7 +29,7 @@ get_header();
                 <article class="card reveal">
                     <div class="card__top">
                         <?php if ($logo) : ?>
-                            <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '')); ?></span>
+                            <span class="logo-tile"><?php bnwp_image($logo, array('w' => 128, 'alt' => '', 'fit' => 'contain')); ?></span>
                         <?php else : ?>
                             <span></span>
                         <?php endif; ?>

@@ -534,11 +534,19 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .grid > *:nth-child(3n + 1) .logo-tile { background: var(--accent-soft); }
 .grid > *:nth-child(3n + 2) .logo-tile { background: var(--accent-2-soft); }
 .grid > *:nth-child(3n + 3) .logo-tile { background: var(--accent-3-soft); }
+/* Both limits, and auto for the sizes themselves, so the logo is scaled to
+   fit inside the plate by whichever edge it meets first. Setting the height
+   outright instead made the element box taller than the logo's own shape
+   whenever the width clamped, and a cropping object-fit then ate the ends off
+   the wide lockups. */
 .logo-tile img {
-  height: calc(var(--tile-h) - 2 * var(--tile-pad));
-  width: auto;
+  max-height: calc(var(--tile-h) - 2 * var(--tile-pad));
   max-width: var(--logo-max-w);
-  object-fit: contain;
+  width: auto;
+  height: auto;
+  /* bnwp_image() writes object-fit inline, and an inline style beats any
+     selector, so a call that forgets fit => contain cannot crop a plate. */
+  object-fit: contain !important;
 }
 .logo-tile--lg { --tile-h: 104px; --tile-pad: 12px; --logo-max-w: 186px; }
 
@@ -557,6 +565,10 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
     --tile-h: clamp(180px, 19vw, 260px);
     --tile-pad: clamp(16px, 2vw, 26px);
     --logo-max-w: clamp(200px, 22vw, 272px);
+    /* The cards keep one height so a row of them lines up; the hero has no
+       row to line up with, so its plate hugs a wide logo instead of leaving
+       it stranded in a tall box. --tile-h stays the ceiling. */
+    height: auto;
     border-radius: 20px;
   }
 }

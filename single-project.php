@@ -64,7 +64,7 @@ while (have_posts()) : the_post();
 
                 <?php if ($logo) : ?>
                     <div class="hero-logo">
-                        <span class="logo-tile logo-tile--lg"><?php bnwp_image($logo, array('w' => 500, 'alt' => get_the_title(), 'loading' => 'eager')); ?></span>
+                        <span class="logo-tile logo-tile--lg"><?php bnwp_image($logo, array('w' => 500, 'alt' => get_the_title(), 'loading' => 'eager', 'fit' => 'contain')); ?></span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -154,7 +154,7 @@ while (have_posts()) : the_post();
                 <?php while ($related->have_posts()) : $related->the_post(); $rl = bnwp_get_meta('_bnwp_logo'); ?>
                 <article class="card reveal">
                     <div class="card__top">
-                        <?php if ($rl) : ?><span class="logo-tile"><?php bnwp_image($rl, array('w' => 128, 'alt' => '')); ?></span><?php endif; ?>
+                        <?php if ($rl) : ?><span class="logo-tile"><?php bnwp_image($rl, array('w' => 128, 'alt' => '', 'fit' => 'contain')); ?></span><?php endif; ?>
                     </div>
                     <h3 class="card__title"><a href="<?php echo esc_url(bnwp_lang_arg(get_permalink())); ?>"><?php the_title(); ?></a></h3>
                 </article>
