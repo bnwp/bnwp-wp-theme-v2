@@ -40,7 +40,7 @@ while (have_posts()) : the_post();
                 <a href="<?php echo esc_url(bnwp_lang_arg($archive ? $archive : home_url('/projects/'))); ?>"><?php echo esc_html(bnwp_text('প্রকল্পসমূহ', 'Projects')); ?></a>
             </nav>
 
-            <div class="layout-aside" style="align-items:center;">
+            <div class="layout-aside layout-aside--hero">
                 <div>
                     <?php if ($status && $status !== 'completed') : ?>
                         <p style="margin:0 0 1rem;"><?php bnwp_status_chip($status); ?></p>
@@ -63,8 +63,8 @@ while (have_posts()) : the_post();
                 </div>
 
                 <?php if ($logo) : ?>
-                    <div style="justify-self:center;">
-                        <span class="logo-tile logo-tile--lg"><?php bnwp_image($logo, array('w' => 240, 'alt' => get_the_title(), 'loading' => 'eager')); ?></span>
+                    <div class="hero-logo">
+                        <span class="logo-tile logo-tile--lg"><?php bnwp_image($logo, array('w' => 500, 'alt' => get_the_title(), 'loading' => 'eager')); ?></span>
                     </div>
                 <?php endif; ?>
             </div>

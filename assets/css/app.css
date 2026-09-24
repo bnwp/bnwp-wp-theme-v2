@@ -521,6 +521,31 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .logo-tile img { width: 100%; height: 100%; object-fit: contain; }
 .logo-tile--lg { width: 104px; height: 104px; padding: 12px; }
 
+/* The project mark in the hero.
+   On a wide screen it had 104px of logo sitting in a 360px column and read as
+   an afterthought, so it grows to fill the space it was already taking up.
+   Below 1000px the columns stack, and a centred tile on its own line left an
+   empty band between the button and the panel below — there it moves above
+   the title instead, aligned with the text, where it introduces the project
+   rather than interrupting it. */
+.layout-aside--hero { align-items: center; }
+.hero-logo { justify-self: center; }
+
+@media (min-width: 1000px) {
+  .layout-aside--hero .logo-tile--lg {
+    width: clamp(180px, 19vw, 260px);
+    height: clamp(180px, 19vw, 260px);
+    padding: clamp(16px, 2vw, 26px);
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 999px) {
+  .layout-aside--hero { gap: 1.25rem; }
+  .layout-aside--hero > .hero-logo { order: -1; justify-self: start; }
+  .layout-aside--hero .logo-tile--lg { width: 92px; height: 92px; padding: 11px; }
+}
+
 .chip {
   display: inline-block;
   padding: .3rem .7rem;
