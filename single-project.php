@@ -11,6 +11,7 @@ while (have_posts()) : the_post();
     $cover   = bnwp_get_meta('_bnwp_cover');
     $wiki    = bnwp_get_meta('_bnwp_wiki');
     $wikitxt = bnwp_get_meta_i18n('_bnwp_wiki_label');
+    $dates   = bnwp_project_dates();
     $caption = bnwp_get_meta_i18n('_bnwp_cover_caption');
     $lead    = bnwp_get_meta_i18n('_bnwp_lead');
     $status  = bnwp_get_meta('_bnwp_status');
@@ -98,6 +99,10 @@ while (have_posts()) : the_post();
                         <?php if ($status) : ?>
                             <dt><?php echo esc_html(bnwp_text('অবস্থা', 'Status')); ?></dt>
                             <dd><?php echo esc_html(bnwp_project_status_label($status)); ?></dd>
+                        <?php endif; ?>
+                        <?php if ($dates) : ?>
+                            <dt><?php echo esc_html(bnwp_text('সময়ক্রম', 'Timeline')); ?></dt>
+                            <dd><?php echo esc_html($dates); ?></dd>
                         <?php endif; ?>
                         <?php if ($wiki) : ?>
                             <dt><?php echo esc_html(bnwp_text('উইকি', 'Wiki')); ?></dt>

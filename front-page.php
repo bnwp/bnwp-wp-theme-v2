@@ -68,7 +68,7 @@ $stats = bnwp_stats();
 
 <?php
 $project_args = array('post_type' => 'project', 'posts_per_page' => 6, 'no_found_rows' => true);
-$projects = new WP_Query($project_args);
+$projects = new WP_Query(bnwp_project_order_args($project_args));
 if ($projects->have_posts()) : ?>
 <section class="section section--sunken">
     <div class="wrap">

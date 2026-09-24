@@ -715,7 +715,7 @@ function bnwp_meta_keys() {
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_cover', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_cover_caption', '_bnwp_cover_caption_en', '_bnwp_wiki_label', '_bnwp_wiki_label_en',
-        '_bnwp_proj_lang', '_bnwp_proj_lang_en',
+        '_bnwp_proj_lang', '_bnwp_proj_lang_en', '_bnwp_dates', '_bnwp_sortkey',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // the English half of each record
@@ -1184,6 +1184,118 @@ function bnwp_person_rows($entries) {
     }
     echo '</div>';
 }
+
+/**
+ * When a contest ran: "YYYY-MM-DD - YYYY-MM-DD", written out in words.
+ *
+ * Stored as plain ISO so it sorts and nobody has to type a month name twice;
+ * shown as "৭ মে – ৭ জুন ২০২৫" or "7 May – 7 June 2025". A year is printed
+ * once when both ends share it, and the month once when both share that, so
+ * a one-month contest reads "1–30 April 2026" rather than repeating itself.
+ * A single date, with no second half, is fine.
+ */
+function bnwp_parse_dates($raw) {
+    // Pull the dates out rather than splitting on the separator: the ISO
+    // dates contain hyphens themselves, so splitting on "-" tore them apart.
+    // This also means any separator works — hyphen, en dash, "to", থেকে.
+    preg_match_all('/(\d{4})-(\d{2})-(\d{2})/', (string) $raw, $found, PREG_SET_ORDER);
+
+    $out = array();
+    foreach (array_slice($found, 0, 2) as $m) {
+        $y = (int) $m[1]; $mo = (int) $m[2]; $d = (int) $m[3];
+        if ($mo >= 1 && $mo <= 12 && $d >= 1 && $d <= 31) {
+            $out[] = array('y' => $y, 'm' => $mo, 'd' => $d);
+        }
+    }
+    return $out;
+}
+
+function bnwp_format_dates($raw) {
+    $parts = bnwp_parse_dates($raw);
+    if (!$parts) {
+        return '';
+    }
+    $en     = bnwp_is_en();
+    $months = $en
+        ? array(1 => 'January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December')
+        : bnwp_bn_months();
+    $num = function ($n) use ($en) {
+        return $en ? (string) $n : bnwp_bn_numerals((string) $n);
+    };
+    $one = function ($p, $withMonth = true, $withYear = true) use ($months, $num) {
+        $s = $num($p['d']);
+        if ($withMonth) { $s .= ' ' . $months[$p['m']]; }
+        if ($withYear)  { $s .= ' ' . $num($p['y']); }
+        return $s;
+    };
+
+    if (count($parts) === 1) {
+        return $one($parts[0]);
+    }
+    list($a, $b) = $parts;
+    $sameYear  = $a['y'] === $b['y'];
+    $sameMonth = $sameYear && $a['m'] === $b['m'];
+    $dash = ' – ';
+
+    if ($sameMonth) {
+        return $num($a['d']) . '–' . $one($b);
+    }
+    return $one($a, true, !$sameYear) . $dash . $one($b);
+}
+
+/** The dates of a project, written out for the current language. */
+function bnwp_project_dates($post_id = null) {
+    return bnwp_format_dates(bnwp_get_meta('_bnwp_dates', $post_id));
+}
+
+/**
+ * A single number a listing can sort on: ongoing first, then upcoming, then
+ * finished, and within each the most recent start first. Kept in meta so the
+ * database does the ordering instead of PHP paging through everything.
+ */
+function bnwp_project_sortkey($post_id) {
+    $parts = bnwp_parse_dates(get_post_meta($post_id, '_bnwp_dates', true));
+    $start = $parts ? sprintf('%04d%02d%02d', $parts[0]['y'], $parts[0]['m'], $parts[0]['d']) : '00000000';
+    $rank  = array('ongoing' => 3, 'upcoming' => 2);
+    $status = (string) get_post_meta($post_id, '_bnwp_status', true);
+    return (isset($rank[$status]) ? $rank[$status] : 1) . $start;
+}
+
+function bnwp_save_project_sortkey($post_id) {
+    if (get_post_type($post_id) !== 'project' || wp_is_post_revision($post_id)) {
+        return;
+    }
+    update_post_meta($post_id, '_bnwp_sortkey', bnwp_project_sortkey($post_id));
+}
+add_action('save_post', 'bnwp_save_project_sortkey', 20);
+
+/**
+ * Order project listings by that key.
+ *
+ * The meta_query names both an EXISTS and a NOT EXISTS clause so the join is
+ * a LEFT one: a project that has never been saved since this key arrived
+ * sorts last rather than vanishing from the archive entirely.
+ */
+function bnwp_project_order_args($args = array()) {
+    $args['meta_query'] = array(
+        'relation'  => 'OR',
+        'has_key'   => array('key' => '_bnwp_sortkey', 'compare' => 'EXISTS'),
+        'no_key'    => array('key' => '_bnwp_sortkey', 'compare' => 'NOT EXISTS'),
+    );
+    $args['orderby'] = array('has_key' => 'DESC', 'date' => 'DESC');
+    return $args;
+}
+
+function bnwp_order_projects($query) {
+    if (is_admin() || !$query->is_main_query() || !$query->is_post_type_archive('project')) {
+        return;
+    }
+    foreach (bnwp_project_order_args() as $key => $value) {
+        $query->set($key, $value);
+    }
+}
+add_action('pre_get_posts', 'bnwp_order_projects');
 
 /**
  * The language a contest is run in.
@@ -2647,6 +2759,14 @@ function bnwp_project_box($post) {
         . '</p>';
     bnwp_field_text(__('Lead / summary', 'bnwp'), '_bnwp_lead', bnwp_get_meta('_bnwp_lead', $post->ID));
     bnwp_field_select(__('Status', 'bnwp'), '_bnwp_status', bnwp_get_meta('_bnwp_status', $post->ID), bnwp_project_statuses());
+    bnwp_field_text(
+        __('Timeline', 'bnwp'),
+        '_bnwp_dates',
+        bnwp_get_meta('_bnwp_dates', $post->ID)
+    );
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('When the contest ran, as 2025-05-07 - 2025-06-07. Written out in words in both languages, and used to order the project listings. One date on its own is fine.', 'bnwp')
+        . '</p>';
     bnwp_field_text(
         __('Contest language', 'bnwp'),
         '_bnwp_proj_lang',
