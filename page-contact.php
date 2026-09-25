@@ -30,10 +30,25 @@ $channels = bnwp_socials();
             )); ?></p>
         <?php endif; ?>
 
+        <?php $form = bnwp_contact_form(); ?>
+        <?php if ($form) : ?>
+        <div class="panel" style="margin-bottom:1.5rem;">
+            <h2 class="panel__title"><?php echo esc_html(bnwp_text('বার্তা পাঠান', 'Send a message')); ?></h2>
+            <p class="contactform__note">
+                <?php printf(
+                    /* translators: %s is the address messages are delivered to. */
+                    esc_html(bnwp_text('এই ফর্মে পাঠানো বার্তা যাবে %s ঠিকানায়।', 'Messages sent through this form are delivered to %s.')),
+                    '<strong>' . esc_html(bnwp_contact_address()) . '</strong>'
+                ); ?>
+            </p>
+            <div class="contactform"><?php echo $form; // already run through do_shortcode ?></div>
+        </div>
+        <?php endif; ?>
+
         <div class="panel" style="margin-bottom:1.5rem;">
             <h2 class="panel__title"><?php echo esc_html(bnwp_text('ইমেইল', 'Email')); ?></h2>
             <p style="margin:0;font-size:var(--step-1);">
-                <a href="mailto:connect@bnwp.org">connect@bnwp.org</a>
+                <a href="mailto:<?php echo esc_attr(bnwp_contact_address()); ?>"><?php echo esc_html(bnwp_contact_address()); ?></a>
             </p>
         </div>
 

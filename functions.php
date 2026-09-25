@@ -778,6 +778,38 @@ function bnwp_archive_title_text() {
 
 
 /* -------------------------------------------------------------------------
+ * 3c. The contact form
+ *
+ * Fluent Forms has no per-language labels, and this site is paired bilingual
+ * everywhere else, so there are two forms and the page shows one. They were
+ * built from the same definition by build/contact-forms.py, so the only thing
+ * that differs between them is the wording.
+ *
+ * Both deliver to the address below, with the sender's address in Reply-To —
+ * never in From, which would be this server claiming to be gmail.com and would
+ * fail SPF. FluentSMTP's "Force From Email" enforces that independently.
+ * ---------------------------------------------------------------------- */
+
+function bnwp_contact_form_id() {
+    // Change these if the forms are ever rebuilt; nothing else refers to them.
+    return apply_filters('bnwp_contact_form_id', bnwp_is_en() ? 4 : 3);
+}
+
+/** Where the form delivers, shown on the page so nobody has to guess. */
+function bnwp_contact_address() {
+    return apply_filters('bnwp_contact_address', 'connect@bnwp.org');
+}
+
+/** The form itself, or nothing at all if Fluent Forms is not active. */
+function bnwp_contact_form() {
+    if (!shortcode_exists('fluentform')) {
+        return '';
+    }
+    return do_shortcode('[fluentform id="' . (int) bnwp_contact_form_id() . '"]');
+}
+
+
+/* -------------------------------------------------------------------------
  * 4. Content types  (identical keys to v1 — do not rename)
  * ---------------------------------------------------------------------- */
 
