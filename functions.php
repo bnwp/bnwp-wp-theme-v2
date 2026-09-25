@@ -1043,6 +1043,45 @@ function bnwp_person_order($post_id = null, $team = '') {
 }
 
 /**
+ * How many contests each person is credited on, organising and judging counted
+ * separately — doing both on one contest is twice the work and counts twice.
+ *
+ * Built in one pass over the projects and kept for the request: a listing asks
+ * this once per person, and the name lookups behind it are cached too.
+ */
+function bnwp_credit_counts() {
+    static $counts = null;
+    if ($counts !== null) {
+        return $counts;
+    }
+    $counts = array();
+    $projects = get_posts(array(
+        'post_type'      => 'project',
+        'posts_per_page' => -1,
+        'no_found_rows'  => true,
+        'fields'         => 'ids',
+    ));
+    foreach ($projects as $id) {
+        foreach (array('_bnwp_organisers', '_bnwp_jury') as $key) {
+            foreach (bnwp_people_entries(get_post_meta($id, $key, true)) as $entry) {
+                if ($entry['type'] !== 'persona') {
+                    continue;
+                }
+                $pid = (int) $entry['post']->ID;
+                $counts[$pid] = isset($counts[$pid]) ? $counts[$pid] + 1 : 1;
+            }
+        }
+    }
+    return $counts;
+}
+
+/** What one person's credits add up to. */
+function bnwp_credit_count($post_id) {
+    $counts = bnwp_credit_counts();
+    return isset($counts[(int) $post_id]) ? $counts[(int) $post_id] : 0;
+}
+
+/**
  * Everybody in a team, in that team's order; pass '' for everybody on the
  * site.
  *
@@ -1069,6 +1108,18 @@ function bnwp_people($team = '') {
         $ob = bnwp_person_order($b->ID, $team);
         if ($oa !== $ob) {
             return $oa < $ob ? -1 : 1;
+        }
+        /*
+         * Nobody has been ranked here, or two people have been given the same
+         * number — either way the numbers do not separate them. Alphabetical
+         * order said nothing at all, so the work does: whoever has carried
+         * more contests, organising or judging, comes first. Names break the
+         * remaining ties so the order is stable.
+         */
+        $ca = bnwp_credit_count($a->ID);
+        $cb = bnwp_credit_count($b->ID);
+        if ($ca !== $cb) {
+            return $cb < $ca ? -1 : 1;
         }
         return strcoll(get_the_title($a->ID), get_the_title($b->ID));
     });

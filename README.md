@@ -195,8 +195,13 @@ nothing. Fill in only what actually differs.
 
 Ordering works the same everywhere: lower first, and **0 means unranked**, so
 anyone unnumbered falls below everyone numbered — setting one person to 1 is
-enough to put them at the top without touching anybody else. People sharing a
-number, 0 included, are alphabetical among themselves. Leave gaps (10, 20, 30)
+enough to put them at the top without touching anybody else.
+
+When the numbers do not separate two people — both unranked, or both given the
+same number — **whoever is credited on more contests comes first**, organising
+and judging counted separately, so doing both on one contest counts twice.
+Alphabetical order said nothing about anybody; this at least reflects the work.
+Names break the remaining ties, so the order is stable. Leave gaps (10, 20, 30)
 and inserting somebody later means editing one record rather than all of them.
 
 Adding a team on the Teams screen adds its three fields automatically, in the
