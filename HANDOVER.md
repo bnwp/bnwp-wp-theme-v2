@@ -201,6 +201,30 @@ Note that an existing term with no posts does **not** 404: WordPress skips
 `handle_404()` for `is_tax()` when the queried object matched. That is what
 lets the empty `former` term be a landing page.
 
+### Yoast holds one of everything
+
+Yoast has one SEO title and one meta description per record, so the English
+half lives in `_bnwp_seo_title_en` and `_bnwp_seo_desc_en` and is swapped in by
+`bnwp_yoast_title()` / `bnwp_yoast_metadesc()`. The same trap as everywhere
+else on this site: **anything that reads a post row directly reads Bengali.**
+`bnwp_meta_description()` ended its fallback chain on `get_post_field(
+'post_content')`, so every English page described itself in Bengali.
+
+Yoast's fields are *protected* meta and the REST API will not write them.
+`bnwp_register_content_types()` registers four of them — title, metadesc,
+focuskw and the OG image — so the site's SEO can be set by script. Anyone who
+can edit the post can write them; nobody else.
+
+**Yoast renders no `og:image` tag at all when it has no image**, so a filter on
+`wpseo_opengraph_image` never fires and cannot be used to supply one. The image
+has to be in `_yoast_wpseo_opengraph-image` on the record itself.
+
+That meta is stored through `esc_url_raw`, which **silently deletes percent
+escapes**: a Commons file called `… (cropped).jpg` was stored as `… cropped.jpg`
+and 404'd, and one with an em dash lost it the same way. Decode the URL before
+storing — `esc_url` keeps literal brackets and literal high bytes — and fetch
+it afterwards to be sure. `build/seo-fields.py` does both.
+
 ### Images
 
 `bnwp_commons_url()` accepts a Commons file-page URL or a bare `File:Name.jpg`

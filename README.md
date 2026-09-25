@@ -308,6 +308,33 @@ Team names and blurbs in English come from **English name** and **Description
 the term's own Name and Description boxes; an empty English box falls back to
 the Bengali, as everywhere else.
 
+### SEO fields
+
+Yoast holds **one** SEO title and **one** meta description per record, which a
+paired-bilingual site has nowhere to put the other half of. So:
+
+| Half | Where it lives |
+|---|---|
+| Bengali SEO title | Yoast's own *SEO title* box |
+| Bengali meta description | Yoast's own *Meta description* box |
+| English SEO title | **English SEO title**, in the English box |
+| English meta description | **English meta description**, in the English box |
+
+Leave an English box empty and English readers get the Bengali, the same
+bargain as everywhere else. The English SEO title is written *without* the site
+name — that is appended for you.
+
+Yoast grades one focus keyphrase against the rendered page, and the canonical
+page here is the Bengali one, so **the keyphrase should be Bengali**. Its
+checks for the keyphrase in the title, in the description, and the description
+length are what these fields answer. Its checks for keyphrase density, for the
+keyphrase in the introduction, in a subheading, and in image alt text are
+properties of the body copy — no field can satisfy them, only writing can.
+
+One check cannot pass on this site: **keyphrase in slug**. Slugs are Latin and
+the keyphrases are Bengali. Making the slugs Bengali would turn every URL into
+a row of percent-escapes, which is a worse trade than one amber bullet.
+
 ### Editing the listing pages
 
 `/teams/` and every team page under it are archives, not Pages, so they do not
