@@ -320,6 +320,21 @@ function bnwp_translation_url($target) {
  * record is never a blank page.
  * ---------------------------------------------------------------------- */
 
+/**
+ * The Bengali half of the SEO pair is Yoast's own field, not a _bnwp_ one, so
+ * it is mapped here rather than given a duplicate of its own.
+ */
+function bnwp_seo_pair($key, $post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    if (bnwp_is_en()) {
+        $en = trim((string) get_post_meta($post_id, '_bnwp_seo_' . $key . '_en', true));
+        if ($en !== '') {
+            return $en;
+        }
+    }
+    return trim((string) get_post_meta($post_id, '_yoast_wpseo_' . ($key === 'desc' ? 'metadesc' : 'title'), true));
+}
+
 /** Meta suffixed "_en" when viewing English, otherwise the plain key. */
 function bnwp_get_meta_i18n($key, $post_id = null, $default = '') {
     $post_id = $post_id ? $post_id : get_the_ID();
@@ -828,6 +843,9 @@ function bnwp_meta_keys() {
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
+        // Yoast holds one SEO title and one description per record, which the
+        // English half of a paired record needs its own version of.
+        '_bnwp_seo_title_en', '_bnwp_seo_desc_en',
     ), bnwp_team_meta_keys());
 }
 
@@ -864,6 +882,7 @@ function bnwp_richtext_meta_keys() {
 function bnwp_multiline_meta_keys() {
     return array(
         '_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en',
+        '_bnwp_seo_desc_en',
     );
 }
 
@@ -1986,6 +2005,25 @@ function bnwp_register_content_types() {
         'auth_callback'     => function () { return current_user_can('manage_categories'); },
     ));
 
+    /*
+     * Yoast keeps its fields as protected meta, which the REST API refuses to
+     * write — so the SEO of forty records could only be edited by hand, one
+     * screen at a time. Registering them makes them writable by anybody who
+     * can already edit the post, and no one else.
+     */
+    foreach (array('_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_yoast_wpseo_focuskw',
+                   '_yoast_wpseo_opengraph-image') as $bnwp_yoast_key) {
+        register_post_meta('', $bnwp_yoast_key, array(
+            'type'              => 'string',
+            'single'            => true,
+            'show_in_rest'      => true,
+            'sanitize_callback' => $bnwp_yoast_key === '_yoast_wpseo_opengraph-image'
+                ? 'esc_url_raw' : 'sanitize_text_field',
+            'auth_callback'     => function () { return current_user_can('edit_posts'); },
+        ));
+    }
+    unset($bnwp_yoast_key);
+
     foreach (bnwp_meta_keys() as $key) {
         register_post_meta('', $key, array(
             'type'              => 'string',
@@ -2165,15 +2203,30 @@ function bnwp_yoast_active() {
 
 function bnwp_meta_description() {
     if (is_singular()) {
-        $lead = bnwp_get_meta('_bnwp_lead');
+        // Every source here has to follow the reader's language. The last one
+        // read the raw post row, which is always Bengali — so every English
+        // project and profile described itself in Bengali to search engines.
+        $written = bnwp_seo_pair('desc');
+        if ($written !== '') {
+            return $written;
+        }
+        $lead = bnwp_get_meta_i18n('_bnwp_lead');
         if ($lead !== '') {
             return wp_trim_words($lead, 32, '…');
+        }
+        $bio = bnwp_get_meta_i18n('_bnwp_bio');
+        if ($bio !== '') {
+            return wp_trim_words($bio, 32, '…');
         }
         $excerpt = get_the_excerpt();
         if ($excerpt !== '') {
             return wp_trim_words($excerpt, 32, '…');
         }
-        return wp_trim_words(wp_strip_all_tags(get_post_field('post_content', get_the_ID())), 32, '…');
+        $body = bnwp_is_en() ? (string) bnwp_get_meta('_bnwp_body_en') : '';
+        if (trim($body) === '') {
+            $body = (string) get_post_field('post_content', get_the_ID());
+        }
+        return wp_trim_words(wp_strip_all_tags($body), 32, '…');
     }
 
     if (is_post_type_archive('project')) {
@@ -2274,6 +2327,15 @@ add_action('wp_head', 'bnwp_seo_head', 5);
  */
 function bnwp_yoast_metadesc($desc) {
     $desc = trim((string) $desc);
+
+    // An English reader gets the English half of the pair, even when Yoast has
+    // a description of its own — Yoast's is the Bengali one.
+    if (is_singular() && bnwp_is_en()) {
+        $en = trim((string) get_post_meta(get_the_ID(), '_bnwp_seo_desc_en', true));
+        if ($en !== '') {
+            return $en;
+        }
+    }
     if ($desc !== '' && $desc !== get_bloginfo('description')) {
         return $desc; // an author wrote one; leave it alone
     }
@@ -2310,6 +2372,13 @@ function bnwp_yoast_title($title) {
         return $title;
     }
     if (is_singular()) {
+        // A hand-written English SEO title replaces the whole thing; the
+        // swap below only works when Yoast built the title from the post
+        // title, which a custom one need not contain at all.
+        $en = trim((string) get_post_meta(get_the_ID(), '_bnwp_seo_title_en', true));
+        if ($en !== '') {
+            return $en . ' - ' . bnwp_site_name();
+        }
         $bn = get_post_field('post_title', get_the_ID());
         $en = get_post_meta(get_the_ID(), '_bnwp_title_en', true);
         if ($bn !== '' && $en !== '') {
@@ -3223,6 +3292,25 @@ function bnwp_english_box($post) {
         <textarea class="widefat" rows="2" id="_bnwp_excerpt_en" name="_bnwp_excerpt_en"><?php
             echo esc_textarea(bnwp_get_meta('_bnwp_excerpt_en', $post->ID));
         ?></textarea>
+    </p>
+
+    <hr style="margin:18px 0 14px;">
+    <p class="description" style="margin:0 0 10px;">
+        <strong><?php esc_html_e('Search engines', 'bnwp'); ?></strong> —
+        <?php esc_html_e('the English half of the two Yoast fields. The Bengali halves are in the Yoast panel below; leave these blank and English readers get the Bengali.', 'bnwp'); ?>
+    </p>
+    <p class="bnwp-field">
+        <label for="_bnwp_seo_title_en"><strong><?php esc_html_e('English SEO title', 'bnwp'); ?></strong></label>
+        <input class="widefat" type="text" id="_bnwp_seo_title_en" name="_bnwp_seo_title_en"
+               value="<?php echo esc_attr(bnwp_get_meta('_bnwp_seo_title_en', $post->ID)); ?>">
+        <span class="description"><?php esc_html_e('Without the site name — that is added automatically. Aim for under about 60 characters.', 'bnwp'); ?></span>
+    </p>
+    <p class="bnwp-field">
+        <label for="_bnwp_seo_desc_en"><strong><?php esc_html_e('English meta description', 'bnwp'); ?></strong></label>
+        <textarea class="widefat" rows="3" id="_bnwp_seo_desc_en" name="_bnwp_seo_desc_en"><?php
+            echo esc_textarea(bnwp_get_meta('_bnwp_seo_desc_en', $post->ID));
+        ?></textarea>
+        <span class="description"><?php esc_html_e('Roughly 120 to 155 characters, and it should contain the focus keyphrase.', 'bnwp'); ?></span>
     </p>
 
     <?php if ($post->post_type === 'project') : ?>
