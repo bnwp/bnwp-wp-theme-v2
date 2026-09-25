@@ -152,20 +152,9 @@ if ($recent->have_posts()) : ?>
 
 
 <?php
-$people_args = array(
-    'post_type'      => 'persona',
-    'posts_per_page' => 8,
-    'no_found_rows'  => true,
-    'tax_query'      => array(
-        'relation' => 'AND',
-        array('taxonomy' => 'team', 'field' => 'slug', 'terms' => 'cot'),
-        array('taxonomy' => 'team', 'field' => 'slug', 'terms' => bnwp_former_team(), 'operator' => 'NOT IN'),
-    ),
-    'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
-    'bnwp_people_order' => true,
-);
-$people = new WP_Query($people_args);
-if ($people->have_posts()) : ?>
+// The core team, in the core team's own order and with its own roles.
+$people = array_slice(bnwp_people('cot'), 0, 8);
+if ($people) : ?>
 <section class="section section--sunken">
     <div class="wrap">
         <div class="section__head">
@@ -173,28 +162,14 @@ if ($people->have_posts()) : ?>
                 <h2><?php echo esc_html(bnwp_home_text('team_title')); ?></h2>
                 <p><?php echo esc_html(bnwp_home_text('team_sub')); ?></p>
             </div>
-            <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/persona/'), $lang)); ?>">
+            <a class="arrow-link" href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/teams/'), $lang)); ?>">
                 <?php echo esc_html(bnwp_home_text('team_all')); ?>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
             </a>
         </div>
 
         <div class="grid grid--4" data-stagger>
-            <?php while ($people->have_posts()) : $people->the_post();
-                $username = bnwp_get_meta('_bnwp_username');
-                $role     = bnwp_get_meta_i18n('_bnwp_role');
-            ?>
-            <a class="person reveal" href="<?php echo esc_url(bnwp_person_url()); ?>"<?php echo bnwp_person_is_external() ? ' rel="noopener"' : ''; ?>>
-                <?php bnwp_image(bnwp_get_meta('_bnwp_img'), array(
-                    'w' => 176, 'h' => 176, 'class' => 'person__avatar',
-                    'alt' => get_the_title(),
-                )); ?>
-                <span class="person__name"><?php the_title(); ?></span>
-                <?php if ($username) : ?><span class="person__handle">@<?php echo esc_html($username); ?></span><?php endif; ?>
-                <?php if ($role) : ?><span class="person__role"><?php echo esc_html($role); ?></span><?php endif; ?>
-                <?php if (bnwp_person_is_external()) { bnwp_external_mark(); } ?>
-            </a>
-            <?php endwhile; wp_reset_postdata(); ?>
+            <?php foreach ($people as $person) { bnwp_person_card($person, 'cot'); } ?>
         </div>
     </div>
 </section>

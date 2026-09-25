@@ -35,7 +35,7 @@ $project = get_post_type_archive_link('project');
                     <ul>
                         <li><a href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>"><?php echo esc_html(bnwp_text('পরিচিতি', 'About')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_lang_arg($project ? $project : home_url('/projects/'), $lang)); ?>"><?php echo esc_html(bnwp_text('প্রকল্পসমূহ', 'Projects')); ?></a></li>
-                        <li><a href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/persona/'), $lang)); ?>"><?php echo esc_html(bnwp_text('সদস্য', 'Members')); ?></a></li>
+                        <li><a href="<?php echo esc_url(bnwp_lang_arg($persona ? $persona : home_url('/teams/'), $lang)); ?>"><?php echo esc_html(bnwp_text('সদস্য', 'Members')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_page_url('posts', $lang)); ?>"><?php echo esc_html(bnwp_text('পোস্টসমূহ', 'Posts')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_page_url('contact', $lang)); ?>"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?></a></li>
                         <li><a href="<?php echo esc_url(bnwp_page_url('privacy', $lang)); ?>"><?php echo esc_html(bnwp_text('গোপনীয়তা বিবৃতি', 'Privacy statement')); ?></a></li>

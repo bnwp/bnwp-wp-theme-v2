@@ -163,6 +163,14 @@
     requestAnimationFrame(frame);
   }
 
+  // The team filter is markup-first: <details open>, so it works with no
+  // script. Only the narrow layout wants it shut, and only at first paint —
+  // reopening it is then the reader's business, not ours.
+  var teamnav = document.querySelector('.teamnav');
+  if (teamnav && window.matchMedia('(max-width: 999px)').matches) {
+    teamnav.open = false;
+  }
+
   // counters that are not .reveal (e.g. above the fold) still run
   Array.prototype.forEach.call(document.querySelectorAll('[data-count]'), function (el) {
     if (!el.classList.contains('reveal')) countUp(el);

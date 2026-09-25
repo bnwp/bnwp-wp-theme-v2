@@ -128,8 +128,12 @@ Bengali name | English name | Bengali description | English description | Link |
 All three mix freely in one field, so a jury of two team members and an outside
 academic is three lines. Keep the bars for anything you skip. A username that
 matches nobody is shown as plain text rather than dropped, so a typo is visible
-on the page instead of silently missing. Leave **Jury** empty and everyone in
-the Reviewers team is listed instead.
+on the page instead of silently missing.
+
+Leave either field empty and no panel appears. The Jury box used to fall back
+to the whole Reviewers team, which credited people who had nothing to do with
+the contest; an empty field now reads as "nobody named yet", which is true and
+visible.
 
 ### Cover image credit
 
@@ -158,7 +162,7 @@ Tick a team (`cot`, `technical`, `jury`) in the Teams box.
 
 | Field | Notes |
 |---|---|
-| Display name, Role, Location | Role and Location have English twins |
+| Display name, Role (all members), Location | Role and Location have English twins |
 | Wiki username | Links the person to projects; leave empty for non-Wikimedians |
 | Profile image | Media Library, a full URL, or a Commons `File:Name.jpg` title |
 | External profile URL | Where their card points, instead of a local page |
@@ -172,17 +176,31 @@ Setting **External profile URL** makes their cards link straight out, with an
 outward arrow, rather than to a thin local page. For a one-off guest on a
 single contest, use **Guest jury** on the project instead.
 
-### Ordering team members
+### Roles and ordering, per team
 
-Each team member has an **Order** box (in the sidebar, under Attributes). Lower
-numbers come first, and **0 means unranked**, so anyone you have not numbered
-falls below everyone you have — setting one person to 1 is enough to put them
-at the top without touching anybody else. People sharing a number, 0 included,
-are alphabetical among themselves.
+Somebody's role is rarely the same in two places. The technical lead who also
+reviews entries is *Technical Lead* on the technical team page and plainly a
+*Reviewer* on the reviewers page, and one field could not say both.
 
-The number is global: one running order used by the team page, every team
-filter and the core-team strip on the home page. Leave gaps (10, 20, 30) and
-inserting somebody later means editing one record rather than all of them.
+Each person therefore carries:
+
+- **Role (all members)** and the **Order** box under Attributes — used on the
+  members listing at `/teams/` and on their own profile;
+- a **Role**, **Role (English)** and **Order** for every team, in the *Per
+  team* part of the BNWP box, used on that team's page. The core team's pair is
+  also what the front page shows.
+
+Both fall back to the all-members values, so filling none of it in changes
+nothing. Fill in only what actually differs.
+
+Ordering works the same everywhere: lower first, and **0 means unranked**, so
+anyone unnumbered falls below everyone numbered — setting one person to 1 is
+enough to put them at the top without touching anybody else. People sharing a
+number, 0 included, are alphabetical among themselves. Leave gaps (10, 20, 30)
+and inserting somebody later means editing one record rather than all of them.
+
+Adding a team on the Teams screen adds its three fields automatically, in the
+admin box and over the REST API. There is nothing to edit in the theme.
 
 ### The navigation menu
 
@@ -203,16 +221,39 @@ as the one on a person: lowest first, 0 meaning unranked and sorting last. It
 sets the order of the filter row on the team page, the badges on a profile and
 the team links in the sitemap.
 
-Out of the box the theme uses Core team, Reviewers, Technical team, then Former
-members, without anything being configured. Setting a number on a team
-overrides that for that team.
+Out of the box the theme uses Core team, Reviewers, Technical team, then the
+former teams, without anything being configured. Setting a number on a team
+overrides that for that team. A former team always sorts after every active
+one.
 
 ### Former members
 
-Tick a person into the **Former members** team. They drop out of the main team
-listing and the home page, and reappear under a *Former members* heading at the
-foot of the team page. Their profile, and every project that credits them, are
-untouched — past work stays theirs. Removing the tick puts them straight back.
+Leaving is recorded per team. Beside every team there is a **former** one —
+`former-cot`, `former-jury`, `former-technical` — and somebody who steps down
+moves from the team to its former counterpart.
+
+This is what a single flat *Former members* team could not do: somebody who had
+left one team but still sat on another had to be marked either wholly past or
+wholly present, and "former" on its own threw away the only interesting part,
+which team they left.
+
+What follows from it:
+
+- Someone still on any active team is a current member and appears normally,
+  under the team they are still on.
+- Someone whose every team is a former one drops to the foot of `/teams/`,
+  under *Former members*, with no role shown — a role belongs to a team.
+- Each team page lists its own past members at the bottom, under their own
+  heading, with their role prefixed *Former* / *প্রাক্তন*.
+- The **Former members** tab gathers them all, split by the team they left.
+- A former team has no fields of its own: it uses the role and order belonging
+  to the team it is the past of.
+
+Their profile, and every project that credits them, are untouched — past work
+stays theirs. Moving them back to the active team puts them straight back.
+
+The flat `former` term still exists, as the address of the Former members tab.
+Nobody is filed under it, and nobody should be.
 
 ### Adding a post
 
@@ -253,8 +294,23 @@ Partner images accept a filename shipped with the theme, a full URL, or a
 Commons title. Known social icons: `facebook`, `youtube`, `linkedin`,
 `telegram`, `github`, `instagram`, `mastodon`.
 
-Team names in English come from an **English name** field on each term under
-**Team Members → Teams**, with sensible defaults for the three that ship.
+Team names and blurbs in English come from **English name** and **Description
+(English)** on each term under **Team Members → Teams**. The Bengali goes in
+the term's own Name and Description boxes; an empty English box falls back to
+the Bengali, as everywhere else.
+
+### Editing the listing pages
+
+`/teams/` and every team page under it are archives, not Pages, so they do not
+appear under **Pages** and have no editor. Their wording lives in two places:
+
+- **Appearance → Customise → Members page text** — the headings and paragraphs
+  on `/teams/`, including the *Former members* block and the filter row, each
+  as `Bengali | English`.
+- **Team Members → Teams** — one team's name and blurb, in both languages.
+
+The same is true of `/projects/` and `/posts/`, whose wording is under
+**Home page text**.
 
 ---
 
@@ -265,10 +321,15 @@ Team names in English come from an **English name** field on each term under
 | Type | Key | Archive |
 |---|---|---|
 | Projects | `project` | `/projects/` |
-| Team members | `persona` | `/persona/` |
+| Team members | `persona` | `/teams/` |
 | Teams | `team` (taxonomy) | `/teams/{slug}/` |
 
-Important team slugs: `cot`, `technical`, `jury`.
+Profiles keep `/persona/{slug}/` — those URLs are indexed, and a person is not
+a team. The listing moved off `/persona/` to sit beside the team pages it
+filters; the old address 301s to the new one.
+
+Team slugs: `cot`, `technical`, `jury`, their `former-` counterparts, and
+`former` as the umbrella tab.
 
 ### Meta keys
 
@@ -278,6 +339,7 @@ Bengali values use the base key; English uses the same key with `_en`.
 _bnwp_logo      _bnwp_cover     _bnwp_wiki      _bnwp_status
 _bnwp_lead      _bnwp_lead_en
 _bnwp_name      _bnwp_role      _bnwp_role_en
+_bnwp_role_{team}   _bnwp_role_{team}_en   _bnwp_order_{team}
 _bnwp_username  _bnwp_location  _bnwp_location_en
 _bnwp_email     _bnwp_img       _bnwp_bio       _bnwp_bio_en
 _bnwp_link      _bnwp_user

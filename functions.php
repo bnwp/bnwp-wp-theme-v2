@@ -114,6 +114,11 @@ function bnwp_language_attributes($output) {
 add_filter('language_attributes', 'bnwp_language_attributes');
 
 function bnwp_document_title_parts($title) {
+    $archive = bnwp_archive_title_text();
+    if ($archive !== '') {
+        $title['title'] = $archive;
+        unset($title['tagline']);
+    }
     if (bnwp_is_en() && isset($title['site']) && $title['site'] === get_bloginfo('name')) {
         $title['site'] = bnwp_site_name();
     }
@@ -703,6 +708,76 @@ function bnwp_image($url, $args = array()) {
 
 
 /* -------------------------------------------------------------------------
+ * 3b. The all-members listing lives at /teams/
+ *
+ * It used to answer at /persona/ while every team page answered at /teams/…,
+ * which read as two unrelated things. Profiles keep /persona/<name>/: those
+ * URLs are indexed, and a person is not a team.
+ * ---------------------------------------------------------------------- */
+
+function bnwp_teams_archive_rule() {
+    add_rewrite_rule('^teams/?$', 'index.php?post_type=persona', 'top');
+}
+add_action('init', 'bnwp_teams_archive_rule');
+
+/** Everything that links to the listing asks WordPress for it, so answer here. */
+function bnwp_persona_archive_link($link, $post_type) {
+    return $post_type === 'persona' ? home_url('/teams/') : $link;
+}
+add_filter('post_type_archive_link', 'bnwp_persona_archive_link', 10, 2);
+
+/** The old address, kept working for anything already pointing at it. */
+function bnwp_redirect_persona_archive() {
+    if (is_feed() || !is_post_type_archive('persona')) {
+        return;
+    }
+    $path = isset($_SERVER['REQUEST_URI'])
+        ? (string) wp_parse_url(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])), PHP_URL_PATH)
+        : '';
+    if (strpos($path, '/persona') === false) {
+        return;
+    }
+    wp_safe_redirect(bnwp_lang_arg(home_url('/teams/')), 301);
+    exit;
+}
+add_action('template_redirect', 'bnwp_redirect_persona_archive', 2);
+
+/**
+ * Rewrite rules are cached in the database and only rebuilt on activation,
+ * which uploading a new version of an already-active theme is not. Bump the
+ * number below whenever a rule changes and the next page load fixes itself.
+ */
+function bnwp_maybe_flush_rewrites() {
+    if (get_option('bnwp_rewrite_version') !== '2') {
+        flush_rewrite_rules();
+        update_option('bnwp_rewrite_version', '2');
+    }
+}
+add_action('init', 'bnwp_maybe_flush_rewrites', 99);
+
+/**
+ * What a listing page is called, in the reader's language.
+ *
+ * Yoast names a taxonomy archive "<term> Archives" from the raw term, so the
+ * English team pages carried Bengali titles, and every one of them carried a
+ * word no reader needs.
+ */
+function bnwp_archive_title_text() {
+    if (is_tax('team')) {
+        $term = get_queried_object();
+        return $term instanceof WP_Term ? bnwp_term_name($term) : '';
+    }
+    if (is_post_type_archive('persona')) {
+        return bnwp_home_text('members_title');
+    }
+    if (is_post_type_archive('project')) {
+        return bnwp_text('প্রকল্পসমূহ', 'Projects');
+    }
+    return '';
+}
+
+
+/* -------------------------------------------------------------------------
  * 4. Content types  (identical keys to v1 — do not rename)
  * ---------------------------------------------------------------------- */
 
@@ -711,7 +786,7 @@ function bnwp_image($url, $args = array()) {
  * else is inherited from v1 and must keep its exact name.
  */
 function bnwp_meta_keys() {
-    return array(
+    return array_merge(array(
         '_bnwp_language', '_bnwp_source_file', '_bnwp_logo', '_bnwp_wiki',
         '_bnwp_lead', '_bnwp_status', '_bnwp_name', '_bnwp_role', '_bnwp_username',
         '_bnwp_wiki_label', '_bnwp_wiki_label_en',
@@ -721,7 +796,31 @@ function bnwp_meta_keys() {
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
-    );
+    ), bnwp_team_meta_keys());
+}
+
+/**
+ * The role and order fields every team carries, one set each.
+ *
+ * They are generated from the teams themselves rather than listed by hand, so
+ * a team added on the Teams screen gets its fields — in the admin box, over
+ * the REST API and through the save handler — without a code change.
+ */
+function bnwp_team_meta_keys() {
+    static $keys = null;
+    if ($keys !== null) {
+        return $keys;
+    }
+    if (!taxonomy_exists('team')) {
+        return array();   // too early to ask; do not cache the empty answer
+    }
+    $keys = array();
+    foreach (bnwp_base_teams() as $term) {
+        $keys[] = '_bnwp_role_' . $term->slug;
+        $keys[] = '_bnwp_role_' . $term->slug . '_en';
+        $keys[] = '_bnwp_order_' . $term->slug;
+    }
+    return $keys;
 }
 
 /** Meta holding rich text, which must keep its markup through sanitising. */
@@ -778,7 +877,16 @@ function bnwp_team_order($term) {
         return $n;
     }
     $defaults = bnwp_team_default_order();
-    return isset($defaults[$term->slug]) ? $defaults[$term->slug] : PHP_INT_MAX;
+    if (isset($defaults[$term->slug])) {
+        return $defaults[$term->slug];
+    }
+    // A former team follows the team it belongs to, but after every active
+    // one, so the filter row reads current teams first and the past ones last.
+    if (bnwp_team_is_former($term)) {
+        $b = bnwp_team_base($term);
+        return 1000 + (isset($defaults[$b]) ? $defaults[$b] : 900);
+    }
+    return PHP_INT_MAX;
 }
 
 /** Sort a list of team terms in place and hand it back. */
@@ -804,86 +912,207 @@ function bnwp_teams($hide_empty = true) {
 }
 
 /**
- * The team slug that marks somebody as no longer active.
+ * Leaving a team is recorded per team, as former-cot, former-jury and so on.
  *
- * Former members stay on the site — their past work does not stop being
- * theirs — but they are held back out of the current team and listed under
- * their own heading.
+ * A single flat "former" team threw away the only interesting part — which
+ * team somebody left — and forced a person who had stepped down from one team
+ * while staying on another to be either wholly past or wholly present. The
+ * slug below is kept only as the address of the Former members tab, which
+ * gathers the per-team ones under their own headings; nobody is filed under it.
  */
 function bnwp_former_team() {
     return 'former';
 }
 
-/** Is this person in the former-members team? */
-function bnwp_is_former($post_id = null) {
+/** The active team a former one belongs to: former-cot -> cot. */
+function bnwp_team_base($team) {
+    $slug = is_object($team) ? $team->slug : (string) $team;
+    return strpos($slug, 'former-') === 0 ? substr($slug, 7) : $slug;
+}
+
+/** The former counterpart of a team: cot -> former-cot. */
+function bnwp_former_slug($team) {
+    return 'former-' . bnwp_team_base($team);
+}
+
+/** Is this team a past one — either a former-x team or the old flat one? */
+function bnwp_team_is_former($team) {
+    $slug = is_object($team) ? $team->slug : (string) $team;
+    return $slug === bnwp_former_team() || strpos($slug, 'former-') === 0;
+}
+
+/** The teams people are actually filed under, ordered, past ones left out. */
+function bnwp_base_teams() {
+    $out = array();
+    foreach (bnwp_teams(false) as $term) {
+        if (!bnwp_team_is_former($term)) {
+            $out[] = $term;
+        }
+    }
+    return $out;
+}
+
+/** A team term by slug, or null. */
+function bnwp_team_term($slug) {
+    $term = get_term_by('slug', $slug, 'team');
+    return $term instanceof WP_Term ? $term : null;
+}
+
+/** Somebody's teams, ordered. */
+function bnwp_person_teams($post_id = null) {
     $post_id = $post_id ? $post_id : get_the_ID();
-    return has_term(bnwp_former_team(), 'team', $post_id);
+    $terms   = get_the_terms($post_id, 'team');
+    return is_array($terms) ? bnwp_sort_teams($terms) : array();
 }
 
 /**
- * Order people by the Order box, with unnumbered people last.
+ * Is this person wholly in the past — is every team they are in a former one?
  *
- * WordPress defaults menu_order to 0, so a plain ascending sort puts everyone
- * who has never been given a number *above* the first person who has — set
- * one person to 1 and they go to the back, which is the opposite of what
- * anyone means by it. Zero therefore reads as "unranked" here and sorts last,
- * so numbering a single person is enough to pin them to the top and the rest
- * can be left alone.
+ * Somebody who has stepped down from one team but still sits on another is
+ * current, and appears in the main listing under the team they are still on.
  */
-function bnwp_people_orderby($orderby, $query) {
-    if (!$query->get('bnwp_people_order')) {
-        return $orderby;
+function bnwp_is_former($post_id = null) {
+    $teams = bnwp_person_teams($post_id ? $post_id : get_the_ID());
+    if (!$teams) {
+        return false;
     }
-    global $wpdb;
-    return "CASE WHEN {$wpdb->posts}.menu_order = 0 THEN 1 ELSE 0 END ASC, "
-         . "{$wpdb->posts}.menu_order ASC, {$wpdb->posts}.post_title ASC";
+    foreach ($teams as $term) {
+        if (!bnwp_team_is_former($term)) {
+            return false;
+        }
+    }
+    return true;
 }
-add_filter('posts_orderby', 'bnwp_people_orderby', 10, 2);
 
 /**
- * People are listed in the order set by the Order box on each team member,
- * lowest first, then everyone unnumbered, alphabetically within each group.
- * Without this they come back newest-first, which is meaningless for a team.
+ * What somebody does, in the context they are being shown in.
+ *
+ * One standing role could not describe the same person in two places — the
+ * technical lead who is also an ordinary reviewer read as "Technical Lead" on
+ * the reviewers page. Each team therefore carries its own role, with the
+ * all-members role as the fallback, so a field left blank never leaves a card
+ * bare. A former team reuses the role of the team it belongs to and prints it
+ * as "Former …", which is the only place that word is added.
  */
-function bnwp_order_people($query) {
-    if (is_admin() || !$query->is_main_query()) {
-        return;
-    }
-    if (!$query->is_post_type_archive('persona') && !$query->is_tax('team')) {
-        return;
-    }
-    $query->set('orderby', array('menu_order' => 'ASC', 'title' => 'ASC'));
-    $query->set('bnwp_people_order', true);
+function bnwp_person_role($post_id = null, $team = '') {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $slug    = is_object($team) ? $team->slug : (string) $team;
 
-    // The main listing is the current team; former members get their own
-    // section further down the page. Asking for the former team directly
-    // still shows them.
-    if (!$query->is_tax('team', bnwp_former_team())) {
-        $query->set('tax_query', array(array(
-            'taxonomy' => 'team',
-            'field'    => 'slug',
-            'terms'    => bnwp_former_team(),
-            'operator' => 'NOT IN',
-        )));
+    $role = $slug === '' ? '' : bnwp_get_meta_i18n('_bnwp_role_' . bnwp_team_base($slug), $post_id);
+    if ($role === '') {
+        $role = bnwp_get_meta_i18n('_bnwp_role', $post_id);
     }
+    if ($role !== '' && $slug !== '' && bnwp_team_is_former($slug)) {
+        $role = bnwp_text('প্রাক্তন ', 'Former ') . $role;
+    }
+    return $role;
 }
-add_action('pre_get_posts', 'bnwp_order_people');
 
-/** Everyone in the former-members team, in the same order as the main list. */
-function bnwp_former_people($limit = 100) {
-    $q = new WP_Query(array(
+/**
+ * Where somebody sits in a listing. Zero means unranked and sorts last, so
+ * numbering one person is enough to pin them to the top and the rest can be
+ * left alone. The all-members order is the Order box; each team may override
+ * it with its own number.
+ */
+function bnwp_person_order($post_id = null, $team = '') {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $slug    = is_object($team) ? $team->slug : (string) $team;
+
+    $n = $slug === '' ? 0 : (int) get_post_meta($post_id, '_bnwp_order_' . bnwp_team_base($slug), true);
+    if ($n <= 0) {
+        $n = (int) get_post_field('menu_order', $post_id);
+    }
+    return $n > 0 ? $n : PHP_INT_MAX;
+}
+
+/**
+ * Everybody in a team, in that team's order; pass '' for everybody on the
+ * site.
+ *
+ * Sorting happens here rather than in SQL because the number that decides it
+ * can live in either the Order box or a per-team field, and there are a few
+ * dozen people in total — not a number worth a join over.
+ */
+function bnwp_people($team = '') {
+    $args = array(
         'post_type'      => 'persona',
-        'posts_per_page' => $limit,
+        'posts_per_page' => -1,
         'no_found_rows'  => true,
-        'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
-        'bnwp_people_order' => true,
-        'tax_query'      => array(array(
-            'taxonomy' => 'team',
-            'field'    => 'slug',
-            'terms'    => bnwp_former_team(),
-        )),
+        'orderby'        => 'title',
+        'order'          => 'ASC',
+    );
+    if ($team !== '') {
+        $args['tax_query'] = array(array(
+            'taxonomy' => 'team', 'field' => 'slug', 'terms' => $team,
+        ));
+    }
+    $people = get_posts($args);
+    usort($people, function ($a, $b) use ($team) {
+        $oa = bnwp_person_order($a->ID, $team);
+        $ob = bnwp_person_order($b->ID, $team);
+        if ($oa !== $ob) {
+            return $oa < $ob ? -1 : 1;
+        }
+        return strcoll(get_the_title($a->ID), get_the_title($b->ID));
+    });
+    return $people;
+}
+
+/** Everybody still on a team somewhere. */
+function bnwp_active_people() {
+    return array_values(array_filter(bnwp_people(), function ($p) {
+        return !bnwp_is_former($p->ID);
+    }));
+}
+
+/** Everybody whose every team is a past one. */
+function bnwp_former_people() {
+    return array_values(array_filter(bnwp_people(), function ($p) {
+        return bnwp_is_former($p->ID);
+    }));
+}
+
+/**
+ * One person tile. Shared by the team listings and the front page so the two
+ * cannot drift apart, and so the role always follows the team being shown.
+ */
+function bnwp_person_card($post, $team = '') {
+    $id       = $post->ID;
+    $username = (string) get_post_meta($id, '_bnwp_username', true);
+    $role     = bnwp_person_role($id, $team);
+    $external = bnwp_person_is_external($id);
+
+    printf(
+        '<a class="person reveal" href="%s"%s>',
+        esc_url(bnwp_person_url($id)),
+        $external ? ' rel="noopener"' : ''
+    );
+    bnwp_image(get_post_meta($id, '_bnwp_img', true), array(
+        'w' => 176, 'h' => 176, 'class' => 'person__avatar', 'alt' => get_the_title($id),
     ));
-    return $q->have_posts() ? $q : null;
+    printf('<span class="person__name">%s</span>', esc_html(get_the_title($id)));
+    if ($username !== '') {
+        printf('<span class="person__handle">@%s</span>', esc_html($username));
+    }
+    if ($role !== '') {
+        printf('<span class="person__role">%s</span>', esc_html($role));
+    }
+    if ($external) {
+        bnwp_external_mark();
+    }
+    echo '</a>';
+}
+
+/** A grid of person tiles, or nothing at all when the team is empty. */
+function bnwp_people_grid($people, $team = '') {
+    if (!$people) {
+        return;
+    }
+    echo '<div class="grid grid--4" data-stagger>';
+    foreach ($people as $person) {
+        bnwp_person_card($person, $team);
+    }
+    echo '</div>';
 }
 
 /** Find a team member by wiki username, falling back to the post slug. */
@@ -892,6 +1121,12 @@ function bnwp_persona_by_key($key) {
     if ($key === '') {
         return null;
     }
+    // A profile page resolves every credit on the site to find its own, which
+    // is two queries a name; the answer cannot change mid-request.
+    static $cache = array();
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
     $found = get_posts(array(
         'post_type'      => 'persona',
         'posts_per_page' => 1,
@@ -899,7 +1134,8 @@ function bnwp_persona_by_key($key) {
         'meta_query'     => array(array('key' => '_bnwp_username', 'value' => $key, 'compare' => '=')),
     ));
     if ($found) {
-        return $found[0];
+        $cache[$key] = $found[0];
+        return $cache[$key];
     }
     $found = get_posts(array(
         'post_type'      => 'persona',
@@ -907,7 +1143,8 @@ function bnwp_persona_by_key($key) {
         'post_status'    => array('publish', 'draft'),
         'name'           => sanitize_title($key),
     ));
-    return $found ? $found[0] : null;
+    $cache[$key] = $found ? $found[0] : null;
+    return $cache[$key];
 }
 
 /**
@@ -979,19 +1216,57 @@ function bnwp_people_entries($raw) {
     return $entries;
 }
 
-/** Everyone in a team, as entries, for the jury fallback. */
-function bnwp_team_entries($slug, $limit = 12) {
-    $people = get_posts(array(
-        'post_type'      => 'persona',
-        'posts_per_page' => $limit,
-        'orderby'        => array('menu_order' => 'ASC', 'title' => 'ASC'),
-        'tax_query'      => array(array('taxonomy' => 'team', 'field' => 'slug', 'terms' => $slug)),
-    ));
-    $entries = array();
-    foreach ($people as $person) {
-        $entries[] = array('type' => 'persona', 'post' => $person, 'note' => '');
+/**
+ * The projects somebody is credited on, split by what they did there.
+ *
+ * Credits are written on the project, not on the person, so this is the only
+ * way round: read every project's two credit fields and keep the ones naming
+ * this person. There are a few dozen projects, and the name lookups behind
+ * bnwp_people_entries() are remembered for the length of the request.
+ */
+function bnwp_person_projects($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $out     = array('organisers' => array(), 'jury' => array());
+
+    $projects = get_posts(bnwp_project_order_args(array(
+        'post_type'      => 'project',
+        'posts_per_page' => -1,
+        'no_found_rows'  => true,
+    )));
+    foreach ($projects as $project) {
+        foreach (array_keys($out) as $field) {
+            foreach (bnwp_people_entries(get_post_meta($project->ID, '_bnwp_' . $field, true)) as $entry) {
+                if ($entry['type'] === 'persona' && (int) $entry['post']->ID === (int) $post_id) {
+                    $out[$field][] = $project;
+                    break;
+                }
+            }
+        }
     }
-    return $entries;
+    return $out;
+}
+
+/** A compact list of projects, shaped like the people rows beside it. */
+function bnwp_project_rows($projects) {
+    if (!$projects) {
+        return;
+    }
+    echo '<div class="peoplelist">';
+    foreach ($projects as $project) {
+        printf('<a class="peoplelist__row" href="%s">', esc_url(bnwp_lang_arg(get_permalink($project))));
+        echo '<span class="peoplelist__logo logo-tile">';
+        bnwp_image(get_post_meta($project->ID, '_bnwp_logo', true), array(
+            'w' => 128, 'alt' => '', 'fit' => 'contain',
+        ));
+        echo '</span><span class="peoplelist__text">';
+        printf('<span class="peoplelist__name">%s</span>', esc_html(get_the_title($project->ID)));
+        $when = bnwp_project_dates($project->ID);
+        if ($when !== '') {
+            printf('<span class="peoplelist__role">%s</span>', esc_html($when));
+        }
+        echo '</span></a>';
+    }
+    echo '</div>';
 }
 
 /**
@@ -1023,6 +1298,16 @@ function bnwp_home_defaults() {
         'team_sub'       => array('যাঁরা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
         'team_all'       => array('সব সদস্য', 'All members'),
         'partners_title' => array('আমাদের অংশীদার', 'Our partners'),
+
+        // The members listing at /teams/. It is an archive rather than a
+        // Page, so it has no editor of its own — this is where its wording
+        // lives, alongside the home page's.
+        'members_title'  => array('সদস্যবৃন্দ', 'Members'),
+        'members_sub'    => array('বাংলা উইকিসংযোগের স্বেচ্ছাসেবী দল।', 'The volunteer team behind Bangla WikiConnect.'),
+        'former_title'   => array('প্রাক্তন সদস্যবৃন্দ', 'Former members'),
+        'former_sub'     => array('যাঁরা অতীতে এই উদ্যোগে অবদান রেখেছেন।', 'People who contributed to this initiative in the past.'),
+        'teamnav_label'  => array('দল বাছাই', 'Filter by team'),
+        'teamnav_all'    => array('সবাই', 'Everyone'),
     );
 }
 
@@ -1512,34 +1797,26 @@ function bnwp_term_name($term) {
     return isset($known[$term->slug]) ? $known[$term->slug] : $term->name;
 }
 
-/** "English name" field on the team taxonomy. */
-function bnwp_team_name_en_field($term) {
-    $value = is_object($term) ? get_term_meta($term->term_id, '_bnwp_name_en', true) : '';
-    if (is_object($term)) {
-        echo '<tr class="form-field"><th scope="row"><label for="bnwp_name_en">' . esc_html__('English name', 'bnwp') . '</label></th><td>';
-    } else {
-        echo '<div class="form-field"><label for="bnwp_name_en">' . esc_html__('English name', 'bnwp') . '</label>';
+/**
+ * A team's blurb in the reader's language.
+ *
+ * The description box on a term holds one string, so the Former members page
+ * was in English whichever language the site was being read in. The Bengali
+ * goes in the box; the English goes beside it, the same paired shape every
+ * record on this site uses.
+ */
+function bnwp_term_description($term) {
+    if (!$term instanceof WP_Term) {
+        return '';
     }
-    printf(
-        '<input type="text" name="_bnwp_name_en" id="bnwp_name_en" value="%s"><p class="description">%s</p>',
-        esc_attr($value),
-        esc_html__('Shown instead of the Bengali name when the site is viewed in English.', 'bnwp')
-    );
-    echo is_object($term) ? '</td></tr>' : '</div>';
+    if (bnwp_is_en()) {
+        $en = trim((string) get_term_meta($term->term_id, '_bnwp_desc_en', true));
+        if ($en !== '') {
+            return $en;
+        }
+    }
+    return (string) $term->description;
 }
-add_action('team_add_form_fields', 'bnwp_team_name_en_field');
-add_action('team_edit_form_fields', 'bnwp_team_name_en_field');
-
-function bnwp_save_team_name_en($term_id) {
-    if (!current_user_can('manage_categories')) {
-        return;
-    }
-    if (isset($_POST['_bnwp_name_en'])) {
-        update_term_meta($term_id, '_bnwp_name_en', sanitize_text_field(wp_unslash($_POST['_bnwp_name_en'])));
-    }
-}
-add_action('created_team', 'bnwp_save_team_name_en');
-add_action('edited_team', 'bnwp_save_team_name_en');
 
 function bnwp_register_content_types() {
     register_post_type('project', array(
@@ -1590,6 +1867,14 @@ function bnwp_register_content_types() {
         'single'            => true,
         'show_in_rest'      => true,
         'sanitize_callback' => 'absint',
+        'auth_callback'     => function () { return current_user_can('manage_categories'); },
+    ));
+
+    register_term_meta('team', '_bnwp_desc_en', array(
+        'type'              => 'string',
+        'single'            => true,
+        'show_in_rest'      => true,
+        'sanitize_callback' => 'sanitize_textarea_field',
         'auth_callback'     => function () { return current_user_can('manage_categories'); },
     ));
 
@@ -1936,6 +2221,23 @@ function bnwp_yoast_title($title) {
 add_filter('wpseo_title', 'bnwp_yoast_title');
 add_filter('wpseo_opengraph_title', 'bnwp_yoast_title');
 add_filter('wpseo_twitter_title', 'bnwp_yoast_title');
+
+/**
+ * Listing pages get the same name in the tab that they carry as a heading.
+ * Runs after bnwp_yoast_title(), so the site name has already been localised
+ * and only the separator has to be kept.
+ */
+function bnwp_yoast_archive_title($title) {
+    $text = bnwp_archive_title_text();
+    if ($text === '' || $title === '') {
+        return $title;
+    }
+    $sep = preg_match('/\s([-\x{2013}\x{2014}|\x{00b7}\x{00bb}:])\s/u', $title, $m) ? $m[1] : '-';
+    return $text . ' ' . $sep . ' ' . bnwp_site_name();
+}
+add_filter('wpseo_title', 'bnwp_yoast_archive_title', 20);
+add_filter('wpseo_opengraph_title', 'bnwp_yoast_archive_title', 20);
+add_filter('wpseo_twitter_title', 'bnwp_yoast_archive_title', 20);
 
 /** og:locale follows the view, not the WP site locale (which is en_US here). */
 add_filter('wpseo_og_locale', 'bnwp_locale');
@@ -2666,6 +2968,38 @@ function bnwp_customize($wp_customize) {
     }
     unset($bnwp_key, $bnwp_label, $bnwp_defaults);
 
+    $wp_customize->add_section('bnwp_listing_section', array(
+        'title'       => __('Members page text', 'bnwp'),
+        'priority'    => 25,
+        'description' => __('The members listing and the team pages are archives, not Pages, so they do not appear under Pages and have no editor of their own. The headings below are the whole of their wording. A single team\'s name and blurb belong on <strong>Team Members &rarr; Teams</strong> instead, where each team carries a Bengali and an English version of both.<br><br>Each box is <strong>Bengali | English</strong>.', 'bnwp'),
+    ));
+
+    $bnwp_listing_labels = array(
+        'members_title' => __('Members: heading', 'bnwp'),
+        'members_sub'   => __('Members: paragraph', 'bnwp'),
+        'former_title'  => __('Former members: heading', 'bnwp'),
+        'former_sub'    => __('Former members: paragraph', 'bnwp'),
+        'teamnav_label' => __('Team filter: label', 'bnwp'),
+        'teamnav_all'   => __('Team filter: the "everyone" chip', 'bnwp'),
+    );
+    foreach ($bnwp_listing_labels as $bnwp_key => $bnwp_label) {
+        $bnwp_defaults = bnwp_home_defaults();
+        $wp_customize->add_setting('bnwp_home_' . $bnwp_key, array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_textarea_field',
+            'transport'         => 'refresh',
+        ));
+        $wp_customize->add_control('bnwp_home_' . $bnwp_key, array(
+            'label'       => $bnwp_label,
+            'section'     => 'bnwp_listing_section',
+            'type'        => in_array($bnwp_key, array('members_sub', 'former_sub'), true) ? 'textarea' : 'text',
+            'input_attrs' => array(
+                'placeholder' => $bnwp_defaults[$bnwp_key][0] . ' | ' . $bnwp_defaults[$bnwp_key][1],
+            ),
+        ));
+    }
+    unset($bnwp_key, $bnwp_label, $bnwp_defaults);
+
     $wp_customize->add_section('bnwp_partners_section', array(
         'title'       => __('Partners', 'bnwp'),
         'priority'    => 31,
@@ -2815,6 +3149,11 @@ function bnwp_team_add_fields() {
         <input type="text" name="bnwp_term_name_en" id="bnwp_term_name_en" value="">
         <p><?php esc_html_e('Shown to English readers. Leave blank to use the Bengali name.', 'bnwp'); ?></p>
     </div>
+    <div class="form-field">
+        <label for="bnwp_term_desc_en"><?php esc_html_e('Description (English)', 'bnwp'); ?></label>
+        <textarea name="bnwp_term_desc_en" id="bnwp_term_desc_en" rows="3"></textarea>
+        <p><?php esc_html_e('The Bengali goes in the Description box; this is what English readers see.', 'bnwp'); ?></p>
+    </div>
     <?php
 }
 add_action('team_add_form_fields', 'bnwp_team_add_fields');
@@ -2822,6 +3161,7 @@ add_action('team_add_form_fields', 'bnwp_team_add_fields');
 function bnwp_team_edit_fields($term) {
     $order = (int) get_term_meta($term->term_id, '_bnwp_order', true);
     $name  = (string) get_term_meta($term->term_id, '_bnwp_name_en', true);
+    $desc  = (string) get_term_meta($term->term_id, '_bnwp_desc_en', true);
     ?>
     <tr class="form-field">
         <th scope="row"><label for="bnwp_term_order"><?php esc_html_e('Order', 'bnwp'); ?></label></th>
@@ -2839,6 +3179,13 @@ function bnwp_team_edit_fields($term) {
             <p class="description"><?php esc_html_e('Shown to English readers. Leave blank to use the Bengali name.', 'bnwp'); ?></p>
         </td>
     </tr>
+    <tr class="form-field">
+        <th scope="row"><label for="bnwp_term_desc_en"><?php esc_html_e('Description (English)', 'bnwp'); ?></label></th>
+        <td>
+            <textarea name="bnwp_term_desc_en" id="bnwp_term_desc_en" rows="4" class="large-text"><?php echo esc_textarea($desc); ?></textarea>
+            <p class="description"><?php esc_html_e('The paragraph under the heading on this team\'s page, for English readers. Put the Bengali in the Description box above; leave this blank and English readers see the Bengali.', 'bnwp'); ?></p>
+        </td>
+    </tr>
     <?php
 }
 add_action('team_edit_form_fields', 'bnwp_team_edit_fields');
@@ -2852,6 +3199,9 @@ function bnwp_team_save_fields($term_id) {
     }
     if (isset($_POST['bnwp_term_name_en'])) {
         update_term_meta($term_id, '_bnwp_name_en', sanitize_text_field(wp_unslash($_POST['bnwp_term_name_en'])));
+    }
+    if (isset($_POST['bnwp_term_desc_en'])) {
+        update_term_meta($term_id, '_bnwp_desc_en', sanitize_textarea_field(wp_unslash($_POST['bnwp_term_desc_en'])));
     }
 }
 add_action('created_team', 'bnwp_team_save_fields');
@@ -3047,7 +3397,11 @@ function bnwp_project_box($post) {
 function bnwp_persona_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_text(__('Display name', 'bnwp'), '_bnwp_name', bnwp_get_meta('_bnwp_name', $post->ID));
-    bnwp_field_text(__('Role', 'bnwp'), '_bnwp_role', bnwp_get_meta('_bnwp_role', $post->ID));
+    bnwp_field_text(__('Role (all members)', 'bnwp'), '_bnwp_role', bnwp_get_meta('_bnwp_role', $post->ID));
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('Shown on the members listing and on this profile. Each team below can override it; leave a team blank and this is used there too.', 'bnwp')
+        . ' ' . esc_html__('The Order box under Attributes decides where this person sits in the members listing — lowest first, 0 meaning unranked.', 'bnwp')
+        . '</p>';
     bnwp_field_text(__('Wiki username', 'bnwp'), '_bnwp_username', bnwp_get_meta('_bnwp_username', $post->ID));
     bnwp_field_text(__('Location', 'bnwp'), '_bnwp_location', bnwp_get_meta('_bnwp_location', $post->ID));
     bnwp_field_text(__('Email', 'bnwp'), '_bnwp_email', bnwp_get_meta('_bnwp_email', $post->ID), 'email');
@@ -3064,6 +3418,57 @@ function bnwp_persona_box($post) {
         __('One per line, as "Label | URL" — for example: Website | https://example.org. The label may be left off and the domain is used instead. Shown on this person\'s page.', 'bnwp'),
         5
     );
+
+    bnwp_persona_team_fields($post);
+}
+
+/**
+ * Role and order, once per team.
+ *
+ * What somebody does is rarely the same on two teams, and where they belong in
+ * one listing says nothing about the other, so each team keeps its own pair.
+ * Both fall back to the all-members values above when left blank, which is why
+ * filling none of this in changes nothing.
+ *
+ * Former teams have no fields of their own: they reuse the ones belonging to
+ * the team they are the past of, and the site prints them as "Former …".
+ */
+function bnwp_persona_team_fields($post) {
+    $teams = bnwp_base_teams();
+    if (!$teams) {
+        return;
+    }
+    echo '<hr style="margin:1.5em 0 1em;">';
+    echo '<p class="description" style="margin:0 0 1em;"><strong>'
+        . esc_html__('Per team', 'bnwp') . '</strong> — '
+        . esc_html__('used on that team\'s page, and on the front page for the core team. Leave a box empty and the all-members value above is used.', 'bnwp')
+        . '</p>';
+
+    foreach ($teams as $term) {
+        $on = has_term($term->term_id, 'team', $post->ID)
+            || has_term(bnwp_former_slug($term), 'team', $post->ID);
+        printf(
+            '<p style="margin:1.2em 0 .4em;font-weight:600;">%s%s</p>',
+            esc_html($term->name),
+            $on ? '' : ' <span style="font-weight:400;opacity:.6;">' . esc_html__('(not on this team)', 'bnwp') . '</span>'
+        );
+        bnwp_field_text(
+            __('Role', 'bnwp'),
+            '_bnwp_role_' . $term->slug,
+            bnwp_get_meta('_bnwp_role_' . $term->slug, $post->ID)
+        );
+        bnwp_field_text(
+            __('Role (English)', 'bnwp'),
+            '_bnwp_role_' . $term->slug . '_en',
+            bnwp_get_meta('_bnwp_role_' . $term->slug . '_en', $post->ID)
+        );
+        bnwp_field_text(
+            __('Order', 'bnwp'),
+            '_bnwp_order_' . $term->slug,
+            bnwp_get_meta('_bnwp_order_' . $term->slug, $post->ID),
+            'number'
+        );
+    }
 }
 
 function bnwp_post_box($post) {

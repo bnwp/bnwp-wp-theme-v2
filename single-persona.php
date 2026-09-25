@@ -8,12 +8,13 @@ get_header();
 
 while (have_posts()) : the_post();
     $username = bnwp_get_meta('_bnwp_username');
-    $role     = bnwp_get_meta_i18n('_bnwp_role');
+    $role     = bnwp_person_role();
+    $mine     = bnwp_person_projects();
     $location = bnwp_get_meta_i18n('_bnwp_location');
     $email    = bnwp_get_meta('_bnwp_email');
     $bio      = bnwp_get_meta_i18n('_bnwp_bio');
     $archive  = get_post_type_archive_link('persona');
-    $terms    = bnwp_sort_teams(get_the_terms(get_the_ID(), 'team'));
+    $terms    = bnwp_person_teams();
 ?>
 
 <article>
@@ -22,7 +23,7 @@ while (have_posts()) : the_post();
             <nav class="breadcrumb" aria-label="<?php echo esc_attr(bnwp_text('ব্রেডক্রাম্ব', 'Breadcrumb')); ?>">
                 <a href="<?php echo esc_url(bnwp_lang_arg(home_url('/'))); ?>"><?php echo esc_html(bnwp_text('প্রচ্ছদ', 'Home')); ?></a>
                 <span>/</span>
-                <a href="<?php echo esc_url(bnwp_lang_arg($archive ? $archive : home_url('/persona/'))); ?>"><?php echo esc_html(bnwp_text('সদস্যবৃন্দ', 'Members')); ?></a>
+                <a href="<?php echo esc_url(bnwp_lang_arg($archive ? $archive : home_url('/teams/'))); ?>"><?php echo esc_html(bnwp_text('সদস্যবৃন্দ', 'Members')); ?></a>
             </nav>
 
             <div style="display:flex;flex-wrap:wrap;gap:1.75rem;align-items:center;">
@@ -62,8 +63,8 @@ while (have_posts()) : the_post();
                 <div class="prose"><?php the_content(); ?></div>
             </div>
 
-            <aside>
-                <div class="panel">
+            <aside class="aside--person stack" style="--flow:1.25rem;">
+                <div class="panel panel--facts">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('যোগাযোগ', 'Contact')); ?></h2>
                     <dl class="factlist">
                         <?php if ($username) : ?>
@@ -83,7 +84,7 @@ while (have_posts()) : the_post();
 
                 <?php $links = bnwp_person_links(); ?>
                 <?php if ($links) : ?>
-                    <div class="panel" style="margin-top:1.25rem;">
+                    <div class="panel panel--links">
                         <h2 class="panel__title"><?php echo esc_html(bnwp_text('অন্যান্য লিঙ্ক', 'Elsewhere')); ?></h2>
                         <ul class="channels">
                             <?php foreach ($links as $link) : ?>
@@ -97,6 +98,16 @@ while (have_posts()) : the_post();
                         </ul>
                     </div>
                 <?php endif; ?>
+                <?php foreach (array(
+                    'organisers' => bnwp_text('আয়োজিত প্রকল্প', 'Projects organised'),
+                    'jury'       => bnwp_text('বিচারক ছিলেন যেসব প্রকল্পে', 'Served on the jury'),
+                ) as $bnwp_field => $bnwp_label) :
+                    if (!$mine[$bnwp_field]) { continue; } ?>
+                    <div class="panel panel--people">
+                        <h2 class="panel__title"><?php echo esc_html($bnwp_label); ?></h2>
+                        <?php bnwp_project_rows($mine[$bnwp_field]); ?>
+                    </div>
+                <?php endforeach; ?>
             </aside>
         </div>
     </div>

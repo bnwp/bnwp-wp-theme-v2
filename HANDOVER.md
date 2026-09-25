@@ -140,6 +140,67 @@ as plain text rather than vanishing, so typos are visible.
 A team member's standing role is deliberately **not** shown on a project — what
 somebody does on a contest is rarely their job title.
 
+An empty field means no panel. It used to fall back to the whole Reviewers
+team, which credited people who had nothing to do with the contest; an empty
+field now reads as "nobody named yet", which is both true and visible.
+
+### A role belongs to a team, not to a person
+
+`_bnwp_role` is the all-members role and the Order box is the all-members
+order. Each team then has `_bnwp_role_{slug}`, `_bnwp_role_{slug}_en` and
+`_bnwp_order_{slug}`, and both fall back to the all-members pair when blank —
+which is why introducing them changed nothing on the live site.
+
+**These keys are generated from the taxonomy**, by `bnwp_team_meta_keys()`,
+which `bnwp_meta_keys()` merges in. Adding a team on the Teams screen gives it
+fields in the admin box, over REST and through the save handler, with no code
+change. It also means `bnwp_meta_keys()` runs a `get_terms()` on `init`; the
+static cache is deliberately *not* populated when the taxonomy does not exist
+yet, or an early caller would poison it with an empty list.
+
+### Leaving is recorded per team
+
+Beside every team there is `former-{slug}`. `bnwp_team_base()` maps one to the
+other, and a former team has no fields of its own — it borrows the role and
+order of the team it is the past of, and prints the role as `Former …` /
+`প্রাক্তন …`.
+
+`bnwp_is_former()` therefore means *every* team this person is in is a former
+one. Someone who has left one team but still sits on another is current, and
+appears under the team they are still on.
+
+The old flat `former` term survives only as the URL of the Former members tab,
+which groups them by the team they left. **Nobody is filed under it.** A single
+flat team forced anyone half-departed to be marked wholly past or wholly
+present, and threw away the only interesting part — which team they left.
+
+### The members listing lives at `/teams/`
+
+It answered at `/persona/` while every team page answered at `/teams/…`, which
+read as two unrelated things. Rather than fight `has_archive` against the
+taxonomy's own permastruct, a single `^teams/?$` rewrite rule points at the
+persona archive, `post_type_archive_link` is filtered so everything that asks
+WordPress gets the new address, and `/persona/` 301s. Profiles keep
+`/persona/{slug}/` — indexed URLs, and a person is not a team.
+
+Rewrite rules are cached in the database and only rebuilt on activation, which
+uploading a new version of an already-active theme is **not**.
+`bnwp_maybe_flush_rewrites()` compares a stored version number and flushes
+once. Bump it whenever a rule changes, or the new URL 404s until somebody
+opens Settings → Permalinks.
+
+### The archive templates do not use the main loop
+
+`archive-persona.php` serves three shapes — everyone, one team, and the former
+tab — and any of them can hold several lists at once. Ordering can come from
+the Order box or a per-team field, so it is done in PHP by `bnwp_people()`
+rather than in SQL. The main query still runs, because it is what decides that
+the page is a team archive and not a 404; its posts are ignored.
+
+Note that an existing term with no posts does **not** 404: WordPress skips
+`handle_404()` for `is_tax()` when the queried object matched. That is what
+lets the empty `former` term be a landing page.
+
 ### Images
 
 `bnwp_commons_url()` accepts a Commons file-page URL or a bare `File:Name.jpg`
@@ -261,6 +322,7 @@ idempotent and verify by reading back.
 
 | Script | What it does |
 |---|---|
+| `split-former-teams.py` | Replaced the flat `former` team with `former-{slug}` per team, and wrote every team's name, order and blurb in both languages. |
 | `refresh-sortkeys.py` | Re-saves every project so `_bnwp_sortkey` picks up a changed ordering rule. **Run after any theme change that touches ordering.** |
 | `add-2025-projects.py` | Created the four 2025 contests and wrote timelines onto all projects. |
 | `fix-tense-add-2026.py` | Put the 2025 records into the present tense; created Wikivoyage 2026. |

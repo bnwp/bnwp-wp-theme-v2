@@ -824,6 +824,46 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   .layout-aside > .aside--project > .panel--people + .panel--people { margin-top: -1rem; }
 }
 
+/* The team filter. Five chips is a row on a desktop and most of a phone
+   screen before a single face appears, so below 1000px it folds into its own
+   summary. <details open> is the honest default — everything works with no
+   script at all, and app.js only closes it on the narrow layout. */
+.teamnav { margin: 0 0 1.25rem; }
+.teamnav__toggle {
+  display: none;
+  align-items: center; gap: .5rem;
+  width: max-content; cursor: pointer;
+  padding: .5rem .9rem;
+  border: 1px solid var(--line); border-radius: 999px;
+  font-size: .9375rem; font-weight: 600; color: var(--ink);
+  list-style: none;
+}
+.teamnav__toggle::-webkit-details-marker { display: none; }
+.teamnav__toggle svg { transition: transform .18s ease; }
+.teamnav[open] .teamnav__toggle svg { transform: rotate(180deg); }
+.teamnav__list { display: flex; flex-wrap: wrap; gap: .5rem; }
+.teamnav__list .chip { text-decoration: none; padding: .5rem 1rem; }
+@media (max-width: 999px) {
+  .teamnav__toggle { display: flex; }
+  .teamnav[open] .teamnav__list { margin-top: .75rem; }
+}
+
+/* A profile stacks the same way a project does: the contact details belong
+   under the name, and the list of projects at the foot. See the note above
+   .aside--project — this is the same display:contents trick. */
+@media (max-width: 999px) {
+  .aside--person { display: contents; }
+  .layout-aside > .aside--person > .panel--facts { order: -1; }
+  .layout-aside > .aside--person > .panel--people { order: 1; }
+  .layout-aside > .aside--person > .panel--people + .panel--people { margin-top: -1rem; }
+}
+
+/* Project rows reuse the people rows, with a logo tile where a face goes. */
+.peoplelist__logo {
+  --tile-h: 44px; --tile-pad: 6px; --logo-max-w: 44px;
+  flex: 0 0 auto;
+}
+
 /* A finished project says so across the top of its own page. A chip is too
    quiet for the one thing a visitor most needs to know before reading the
    entry rules — that they cannot enter. White on --brand-red is 8.9:1. */

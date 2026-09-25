@@ -112,11 +112,10 @@ while (have_posts()) : the_post();
 
                 <?php
                 // Named jury for this project — team members and guests in one
-                // list, in the order written; otherwise the Reviewers team.
+                // list, in the order written. Nobody named, no panel: the
+                // Reviewers team used to fill the gap, crediting people who had
+                // nothing to do with the contest.
                 $jury = bnwp_people_entries(bnwp_get_meta('_bnwp_jury'));
-                if (!$jury) {
-                    $jury = bnwp_team_entries('jury', 6);
-                }
                 if ($jury) : ?>
                 <div class="panel panel--people">
                     <h2 class="panel__title"><?php echo esc_html(bnwp_text('বিচারকমণ্ডলী', 'Jury')); ?></h2>
