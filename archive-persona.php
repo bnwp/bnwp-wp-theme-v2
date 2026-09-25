@@ -120,7 +120,7 @@ foreach ($sections as $i => $section) :
     <div class="section<?php echo $i % 2 ? ' section--sunken' : ''; ?>">
         <div class="wrap">
             <?php if ($section_head) : ?>
-                <div class="section__head"><div><h2><?php echo esc_html($section_head); ?></h2></div></div>
+                <div class="section__head section__head--sub"><div><h2><?php echo esc_html($section_head); ?></h2></div></div>
             <?php endif; ?>
             <?php bnwp_people_grid($section_people, $section_team); ?>
         </div>
@@ -129,7 +129,9 @@ foreach ($sections as $i => $section) :
 
 <?php
 // The all-members page keeps its past members at the bottom, under their own
-// heading and with no roles: a role belongs to a team, and theirs is over.
+// heading. Passing the umbrella slug is what marks the roles as past: there is
+// no _bnwp_role_former, so each card falls back to the all-members role and
+// prints it as "Former ..."..
 $former_all = $is_all ? bnwp_former_people() : array();
 if ($former_all) : ?>
 <div class="section section--sunken">
@@ -140,18 +142,7 @@ if ($former_all) : ?>
                 <p><?php echo esc_html(bnwp_home_text('former_sub')); ?></p>
             </div>
         </div>
-        <div class="grid grid--4" data-stagger>
-            <?php foreach ($former_all as $person) : ?>
-                <a class="person reveal" href="<?php echo esc_url(bnwp_person_url($person->ID)); ?>">
-                    <?php bnwp_image(get_post_meta($person->ID, '_bnwp_img', true), array(
-                        'w' => 176, 'h' => 176, 'class' => 'person__avatar', 'alt' => get_the_title($person->ID),
-                    )); ?>
-                    <span class="person__name"><?php echo esc_html(get_the_title($person->ID)); ?></span>
-                    <?php $handle = get_post_meta($person->ID, '_bnwp_username', true); ?>
-                    <?php if ($handle) : ?><span class="person__handle">@<?php echo esc_html($handle); ?></span><?php endif; ?>
-                </a>
-            <?php endforeach; ?>
-        </div>
+        <?php bnwp_people_grid($former_all, bnwp_former_team()); ?>
     </div>
 </div>
 <?php elseif (!$rendered) : ?>

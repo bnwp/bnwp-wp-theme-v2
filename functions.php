@@ -1003,9 +1003,26 @@ function bnwp_person_role($post_id = null, $team = '') {
         $role = bnwp_get_meta_i18n('_bnwp_role', $post_id);
     }
     if ($role !== '' && $slug !== '' && bnwp_team_is_former($slug)) {
-        $role = bnwp_text('প্রাক্তন ', 'Former ') . $role;
+        $role = bnwp_former_role($role);
     }
     return $role;
+}
+
+/**
+ * "Reviewer, Wikimedia volunteer" is two roles, and only prefixing the first
+ * reads as though the second is still current. Each part is marked instead:
+ * "Former Reviewer, Former Wikimedia volunteer".
+ */
+function bnwp_former_role($role) {
+    $word  = bnwp_text('প্রাক্তন ', 'Former ');
+    $parts = array();
+    foreach (preg_split('/\s*[,\x{060c}]\s*/u', (string) $role) as $part) {
+        $part = trim($part);
+        if ($part !== '') {
+            $parts[] = $word . $part;
+        }
+    }
+    return $parts ? implode(', ', $parts) : '';
 }
 
 /**
@@ -1295,7 +1312,7 @@ function bnwp_home_defaults() {
         'newsroom_title' => array('বার্তাকক্ষ', 'Newsroom'),
         'newsroom_all'   => array('সব পোস্ট', 'All posts'),
         'team_title'     => array('মূল দল', 'Core team'),
-        'team_sub'       => array('যাঁরা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
+        'team_sub'       => array('যারা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
         'team_all'       => array('সব সদস্য', 'All members'),
         'partners_title' => array('আমাদের অংশীদার', 'Our partners'),
 
@@ -1305,7 +1322,7 @@ function bnwp_home_defaults() {
         'members_title'  => array('সদস্যবৃন্দ', 'Members'),
         'members_sub'    => array('বাংলা উইকিসংযোগের স্বেচ্ছাসেবী দল।', 'The volunteer team behind Bangla WikiConnect.'),
         'former_title'   => array('প্রাক্তন সদস্যবৃন্দ', 'Former members'),
-        'former_sub'     => array('যাঁরা অতীতে এই উদ্যোগে অবদান রেখেছেন।', 'People who contributed to this initiative in the past.'),
+        'former_sub'     => array('যারা অতীতে এই উদ্যোগে অবদান রেখেছেন।', 'People who contributed to this initiative in the past.'),
         'teamnav_label'  => array('দল বাছাই', 'Filter by team'),
         'teamnav_all'    => array('সবাই', 'Everyone'),
     );

@@ -244,7 +244,11 @@ What follows from it:
 - Someone whose every team is a former one drops to the foot of `/teams/`,
   under *Former members*, with no role shown — a role belongs to a team.
 - Each team page lists its own past members at the bottom, under their own
-  heading, with their role prefixed *Former* / *প্রাক্তন*.
+  heading, with their role prefixed *Former* / *প্রাক্তন*. A role naming two
+  jobs is marked on both — "Reviewer, Wikimedia volunteer" becomes "Former
+  Reviewer, Former Wikimedia volunteer", because prefixing only the first
+  reads as though the second is still current.
+- On the members listing the same happens to their all-members role.
 - The **Former members** tab gathers them all, split by the team they left.
 - A former team has no fields of its own: it uses the role and order belonging
   to the team it is the past of.
