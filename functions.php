@@ -2261,7 +2261,15 @@ function bnwp_en_sitemap_entries() {
         }
     }
 
-    foreach (bnwp_teams() as $term) {
+    $listable = bnwp_teams();
+    // The Former members tab has no posts filed under it — it gathers the
+    // per-team ones — so hide_empty drops it, though it is a real page linked
+    // from every team listing.
+    $past = bnwp_team_term(bnwp_former_team());
+    if ($past && bnwp_former_people()) {
+        $listable[] = $past;
+    }
+    foreach ($listable as $term) {
         $link = get_term_link($term);
         if (!is_wp_error($link)) {
             $urls[$link] = '';
