@@ -3402,6 +3402,22 @@ function bnwp_project_box($post) {
         . '</div>';
 }
 
+/**
+ * WordPress owns the Order box in Post Attributes and labels it just "Order",
+ * which is the same word the per-team boxes use. Say which one this is, in the
+ * only place somebody looking at it will read.
+ */
+function bnwp_order_box_note($post) {
+    if (!$post || $post->post_type !== 'persona') {
+        return;
+    }
+    echo '<p class="description" style="margin:.6em 0 0;">'
+        . esc_html__('Where this person sits in the members listing, lowest first. 0 means unranked and sorts last.', 'bnwp')
+        . ' ' . esc_html__('Each team can override it with its own Order, in the BNWP box below.', 'bnwp')
+        . '</p>';
+}
+add_action('page_attributes_misc_attributes', 'bnwp_order_box_note');
+
 function bnwp_persona_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_text(__('Display name', 'bnwp'), '_bnwp_name', bnwp_get_meta('_bnwp_name', $post->ID));
