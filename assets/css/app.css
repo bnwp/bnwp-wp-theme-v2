@@ -799,7 +799,13 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft);
 }
 
-.layout-aside { display: grid; gap: 2rem; }
+/* minmax(0, 1fr) rather than a bare auto track: an auto track sizes to
+   max-content, and WordPress writes the editor's pixel width inline on a
+   caption figure — style="width: 960px" — so on a phone that number became
+   the width of the whole content column and took the page with it. The track
+   must be allowed to shrink below its contents. */
+.layout-aside { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+.layout-aside > * { min-width: 0; }
 @media (min-width: 1000px) {
   .layout-aside { grid-template-columns: minmax(0, 1fr) 360px; gap: 3.5rem; align-items: start; }
 }
@@ -837,9 +843,16 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 /* Images written into the body, which is where cover pictures live now.
    WordPress's [caption] renders as a figure too (the theme declares html5
    caption support), so both shapes land on the same rules. */
+/* The theme decides how wide a picture is, not the number the editor stored:
+   it fills the text column on a phone, a tablet and a desktop alike, and the
+   inline width WordPress writes is overridden rather than obeyed. */
 .prose figure,
-.prose .wp-caption { margin: 1.75rem 0; max-width: 100% !important; }
-.prose figure { margin: 1.75rem 0; }
+.prose .wp-caption {
+  width: auto !important;
+  max-width: 100% !important;
+  margin: 1.75rem 0;
+}
+.prose img { max-width: 100%; height: auto; }
 .prose figure img {
   display: block; width: 100%; height: auto;
   border-radius: var(--radius); border: 1px solid var(--line);
