@@ -242,10 +242,13 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* On a narrow phone the wordmark plus three controls overflowed, pushing the
-   menu button onto a second line. Below 480px the mark speaks for itself. */
+/* On a narrow phone the wordmark plus three controls overflowed the header
+   bar, pushing the menu button onto a second line, so below 480px the mark
+   speaks for itself there. Scoped to the header on purpose: the footer sets
+   the brand on its own line with the whole width to itself, and hiding the
+   name there solved nothing. */
 @media (max-width: 479px) {
-  .brand__name {
+  .site-header .brand__name {
     position: absolute; width: 1px; height: 1px;
     margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
