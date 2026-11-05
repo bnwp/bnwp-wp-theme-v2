@@ -1781,26 +1781,63 @@ function bnwp_project_sortkey($post_id) {
 }
 
 /**
- * Rebuild every project's sort key.
+ * Rebuild every project's sort key, and clear the page cache if a project
+ * started or ended since the last run.
  *
  * A contest that ended overnight has to fall out of the ongoing group without
- * anyone editing it, so this runs daily as well as on save.
+ * anyone editing it, so this runs hourly as well as on save.
+ *
+ * Nobody saves anything when a contest ends, so nothing told LiteSpeed either:
+ * the cached pages kept saying "Ongoing", without the ended bar or the impact
+ * card, for up to the cache's seven-day lifetime. The first digit of a sort key
+ * is the status group, so a changed key means a changed status. Everything is
+ * purged rather than one page, because the home page, the projects listing and
+ * people's profiles all show status chips too. That is a few times a month.
  */
 function bnwp_refresh_sortkeys() {
+    $changed = array();
     foreach (get_posts(array(
         'post_type'      => 'project',
         'posts_per_page' => -1,
         'post_status'    => 'any',
         'fields'         => 'ids',
     )) as $id) {
-        update_post_meta($id, '_bnwp_sortkey', bnwp_project_sortkey($id));
+        $old = (string) get_post_meta($id, '_bnwp_sortkey', true);
+        $new = bnwp_project_sortkey($id);
+        if ($old === $new) {
+            continue;
+        }
+        update_post_meta($id, '_bnwp_sortkey', $new);
+        if ($old !== '' && substr($old, 0, 1) !== substr($new, 0, 1)) {
+            $changed[] = $id;
+        }
     }
+    if ($changed) {
+        bnwp_purge_page_cache();
+    }
+    return $changed;
 }
 add_action('bnwp_refresh_sortkeys', 'bnwp_refresh_sortkeys');
 
+/**
+ * Empty the full-page cache. LiteSpeed Cache listens for this action; with the
+ * plugin inactive nothing is listening and it does nothing.
+ */
+function bnwp_purge_page_cache() {
+    do_action('litespeed_purge_all');
+}
+
+/**
+ * Hourly, so a contest that ends at midnight reads as ended within the hour
+ * instead of up to a day later. A site still carrying the old daily event is
+ * moved over once.
+ */
 function bnwp_schedule_sortkeys() {
+    if (wp_get_schedule('bnwp_refresh_sortkeys') === 'daily') {
+        wp_clear_scheduled_hook('bnwp_refresh_sortkeys');
+    }
     if (!wp_next_scheduled('bnwp_refresh_sortkeys')) {
-        wp_schedule_event(time() + 300, 'daily', 'bnwp_refresh_sortkeys');
+        wp_schedule_event(time() + 300, 'hourly', 'bnwp_refresh_sortkeys');
     }
 }
 add_action('init', 'bnwp_schedule_sortkeys');

@@ -122,11 +122,24 @@ second source of truth and went stale — a contest that ended on 31 August was
 still advertising itself as চলমান four weeks later.
 
 Because the answer moves with the calendar, so does the sort key
-(`_bnwp_sortkey`). It is rebuilt on save and daily on cron
+(`_bnwp_sortkey`). It is rebuilt on save and hourly on cron
 (`bnwp_refresh_sortkeys`). The key encodes the whole ordering rule in one
 descending pass: ongoing first (earliest start, so longest-running, at the top),
 then upcoming (soonest first), then finished (most recent first). The two
 ascending groups store `99999999 - start` to reverse inside a descending sort.
+
+**A status change has to empty the page cache, because nothing else will.**
+Nobody saves a project when its contest ends, so LiteSpeed — whose cached pages
+live for seven days — kept serving "Ongoing" with no ended bar and no impact
+card. The key's first digit is the status group, so when the hourly rebuild
+sees that digit change it fires `litespeed_purge_all`. Everything, not one
+page: the home page, `/projects/` and profiles show status chips too. The run
+was daily until 3.12.1; `bnwp_schedule_sortkeys()` moves an existing daily
+event to hourly once.
+
+WP-Cron only runs when a request reaches PHP, and LiteSpeed answers most
+requests itself, so "hourly" means "on the first uncached request after the
+hour" — an admin visit or any REST call is enough.
 
 ### Crediting people
 

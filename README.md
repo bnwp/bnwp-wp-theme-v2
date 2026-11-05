@@ -86,8 +86,11 @@ Listings — the home page and the projects archive — are ordered:
 3. **Finished**, most recent first
 4. Anything without a timeline, last
 
-That order comes from a key rebuilt whenever a project is saved and once a day
+That order comes from a key rebuilt whenever a project is saved and every hour
 on cron, since the answer changes with the calendar rather than with edits.
+When a project starts or ends, that hourly check also empties the LiteSpeed
+cache, so its new status, the ended bar and its impact figures appear without
+anyone purging by hand.
 
 ### What a project achieved
 
