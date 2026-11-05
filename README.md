@@ -70,6 +70,8 @@ Details** box holds:
 | Lead | One sentence. Used on cards and as the meta description |
 | Timeline | `2025-05-07 - 2025-06-07`. Written out in words in both languages |
 | Contest language | The language the contest runs in, not the reader's. Empty means Bangla |
+| Impact | One figure per line, `number \| Bengali label \| English label` — see below |
+| Report link | The results or report page on the wiki, if there is one |
 | Organisers, Jury | One person per line — see below |
 
 **Status is not a field.** Ongoing, Upcoming and Completed are read off the
@@ -86,6 +88,30 @@ Listings — the home page and the projects archive — are ordered:
 
 That order comes from a key rebuilt whenever a project is saved and once a day
 on cron, since the answer changes with the calendar rather than with edits.
+
+### What a project achieved
+
+Once a project has finished, its **Impact** figures appear in a card under its
+title, above everything else on the page — the same card and number style as
+the home page's impact numbers. One figure per line:
+
+```
+1162 | পাতা তৈরি | pages created
+1146509 | শব্দ যোগ | words added
+58 | সক্রিয় অবদানকারী | active contributors
+```
+
+Type the plain number and it is scaled per language, as on the home page:
+`1146509` reads `11.5 লক্ষ` in Bengali and `1.1M` in English, and anything
+under 10,000 is shown in full. Unlike the home page, no `+` is added — these
+are final figures, so type one only if the number is a lower bound. Bengali
+digits are accepted, a `0` is left out (so rows copy straight from the stats
+sheet), and an empty English label falls back to the Bengali.
+
+Nothing shows while a project is upcoming or ongoing, even if the field is
+filled in early: a running contest's figures would be wrong by the next day.
+**Report link** adds a *Full report* link to the card and a *Report* row to
+*At a glance*.
 
 ### Pictures in a project
 
@@ -380,6 +406,7 @@ _bnwp_username  _bnwp_location  _bnwp_location_en
 _bnwp_email     _bnwp_img       _bnwp_bio       _bnwp_bio_en
 _bnwp_link      _bnwp_user
 _bnwp_organisers  _bnwp_jury        (comma-separated wiki usernames)
+_bnwp_impact      _bnwp_report      (impact figures, one per line; report URL)
 _bnwp_title_en    _bnwp_body_en     _bnwp_excerpt_en
 ```
 

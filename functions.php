@@ -840,6 +840,8 @@ function bnwp_meta_keys() {
         '_bnwp_proj_lang', '_bnwp_proj_lang_en', '_bnwp_dates', '_bnwp_sortkey',
         '_bnwp_location', '_bnwp_email', '_bnwp_img', '_bnwp_bio', '_bnwp_user',
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
+        // what a finished project achieved, and where its report is
+        '_bnwp_impact', '_bnwp_report',
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
@@ -882,8 +884,18 @@ function bnwp_richtext_meta_keys() {
 function bnwp_multiline_meta_keys() {
     return array(
         '_bnwp_links', '_bnwp_organisers', '_bnwp_jury', '_bnwp_excerpt_en',
-        '_bnwp_seo_desc_en',
+        '_bnwp_seo_desc_en', '_bnwp_impact',
     );
+}
+
+/**
+ * Meta holding a single web address. sanitize_text_field strips percent
+ * escapes, which a copied Wikipedia link is full of, so these go through
+ * esc_url_raw on both paths. `_bnwp_wiki` already did in the admin; over REST
+ * it did not, which is the kind of disagreement HANDOVER.md warns about.
+ */
+function bnwp_url_meta_keys() {
+    return array('_bnwp_wiki', '_bnwp_report');
 }
 
 /**
@@ -900,6 +912,9 @@ function bnwp_meta_sanitizer($key) {
     }
     if (in_array($key, bnwp_media_meta_keys(), true)) {
         return 'bnwp_sanitize_media_ref';
+    }
+    if (in_array($key, bnwp_url_meta_keys(), true)) {
+        return 'esc_url_raw';
     }
     return 'sanitize_text_field';
 }
@@ -2054,10 +2069,7 @@ function bnwp_get_meta($key, $post_id = null, $default = '') {
  * ---------------------------------------------------------------------- */
 
 function bnwp_bn_numerals($value) {
-    return strtr((string) $value, array(
-        '0' => '০', '1' => '১', '2' => '২', '3' => '৩', '4' => '৪',
-        '5' => '৫', '6' => '৬', '7' => '৭', '8' => '৮', '9' => '৯',
-    ));
+    return strtr((string) $value, bnwp_bn_digits());
 }
 
 function bnwp_bn_months() {
@@ -2930,7 +2942,22 @@ function bnwp_format_number($n) {
  * so they only need the three-field form.
  */
 function bnwp_stats() {
-    $raw = get_theme_mod('bnwp_stats', bnwp_stats_default());
+    return bnwp_parse_stat_rows(get_theme_mod('bnwp_stats', bnwp_stats_default()));
+}
+
+/**
+ * Turn `number | Bengali label | English label` lines into stat rows.
+ *
+ * Shared by the home page's impact numbers and a project's own, so both scale
+ * and localise a number the same way. They differ in one thing:
+ *
+ * - The home page counts a total that is still growing, so every plain number
+ *   gets a "+" whether or not one was typed.
+ * - A finished project's figures are final. A "+" appears only where the
+ *   editor typed one, a 0 is left out (no "0 images added" under a writing
+ *   contest), and digits may be typed in Bengali.
+ */
+function bnwp_parse_stat_rows($raw, $final = false) {
     $rows = array();
 
     foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
@@ -2950,17 +2977,24 @@ function bnwp_stats() {
             isset($parts[2]) ? $parts[2] : ''
         );
 
+        if ($final) {
+            $value = strtr($value, array_flip(bnwp_bn_digits()));
+        }
+
         if ($value === '') {
             continue;
         }
 
-        // A plain number is scaled for the language and always gets a "+".
-        // Anything else is shown exactly as typed.
+        // A plain number is scaled for the language. Anything else is shown
+        // exactly as typed.
         $count = null;
         $suffix = '';
-        if (preg_match('/^(\d[\d,\s]*)\+?$/u', $value, $m)) {
+        if (preg_match('/^(\d[\d,\s]*)(\+?)$/u', $value, $m)) {
             $count  = (int) preg_replace('/\D/', '', $m[1]);
-            $suffix = '+';
+            $suffix = $final ? $m[2] : '+';
+            if ($final && $count === 0) {
+                continue;
+            }
             $value  = bnwp_format_number($count) . $suffix;
         }
 
@@ -2968,6 +3002,29 @@ function bnwp_stats() {
     }
 
     return $rows;
+}
+
+/** Bengali digits, keyed by the ASCII digit each one stands for. */
+function bnwp_bn_digits() {
+    return array(
+        '0' => '০', '1' => '১', '2' => '২', '3' => '৩', '4' => '৪',
+        '5' => '৫', '6' => '৬', '7' => '৭', '8' => '৮', '9' => '৯',
+    );
+}
+
+/**
+ * What a project achieved, as stat rows — but only once it has finished.
+ *
+ * Figures for a contest still running are a moving target and would be wrong
+ * by the next day, so an ongoing or upcoming project shows none even if the
+ * field has been filled in early.
+ */
+function bnwp_project_impact($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    if (bnwp_project_status($post_id) !== 'completed') {
+        return array();
+    }
+    return bnwp_parse_stat_rows(get_post_meta($post_id, '_bnwp_impact', true), true);
 }
 
 /* -------------------------------------------------------------------------
@@ -3548,6 +3605,32 @@ function bnwp_project_box($post) {
         . esc_html($bnwp_now ? bnwp_project_status_label($bnwp_now) : __('set a timeline and this follows automatically', 'bnwp'))
         . ' — ' . esc_html__('worked out from the dates above, so there is nothing to keep up to date by hand.', 'bnwp')
         . '</p>';
+
+    bnwp_field_textarea(
+        __('Impact', 'bnwp'),
+        '_bnwp_impact',
+        bnwp_get_meta('_bnwp_impact', $post->ID),
+        '',
+        6
+    );
+    echo '<div class="description" style="margin-top:-8px;">'
+        . '<p style="margin:.2em 0;"><strong>' . esc_html__('What the project achieved, shown at the top of its page once it has finished. One figure per line:', 'bnwp') . '</strong></p>'
+        . '<p style="margin:.2em 0;"><code>' . esc_html__('number | Bengali label | English label', 'bnwp') . '</code></p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('Type the plain number — 1627935, not "16 lakh". It is scaled for each language (1.6M, ১৬.৩ লক্ষ); below 10,000 it is shown in full. Bengali digits work too. Add a + only if the figure is a lower bound. A 0 is left out, so rows can be copied straight from the stats sheet. Leave the English label empty to use the Bengali.', 'bnwp') . '</p>'
+        . '<p style="margin:.6em 0 .2em;"><strong>' . esc_html__('Example', 'bnwp') . '</strong></p>'
+        . '<p style="margin:.2em 0;"><code>1162 | পাতা তৈরি | pages created</code><br><code>1146509 | শব্দ যোগ | words added</code><br><code>58 | সক্রিয় অবদানকারী | active contributors</code></p>'
+        . '<p style="margin:.5em 0 .2em;">' . esc_html__('Nothing is shown while the project is upcoming or ongoing, even if this is filled in early.', 'bnwp') . '</p>'
+        . '</div>';
+    bnwp_field_text(
+        __('Report link', 'bnwp'),
+        '_bnwp_report',
+        bnwp_get_meta('_bnwp_report', $post->ID),
+        'url'
+    );
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('The full results or report page on the wiki, if there is one. Linked beside the impact figures and in the At a glance panel.', 'bnwp')
+        . '</p>';
+
     bnwp_field_text(
         __('Contest language', 'bnwp'),
         '_bnwp_proj_lang',
@@ -3730,7 +3813,7 @@ function bnwp_save_meta($post_id) {
             $value = sanitize_email($raw);
         } elseif (in_array($key, $media_keys, true)) {
             $value = bnwp_sanitize_media_ref($raw);
-        } elseif ($key === '_bnwp_wiki') {
+        } elseif (in_array($key, bnwp_url_meta_keys(), true)) {
             $value = esc_url_raw($raw);
         } else {
             $value = sanitize_text_field($raw);

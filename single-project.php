@@ -15,6 +15,8 @@ while (have_posts()) : the_post();
     $lead    = bnwp_get_meta_i18n('_bnwp_lead');
     $status  = bnwp_project_status();
     $archive = get_post_type_archive_link('project');
+    $impact  = bnwp_project_impact();
+    $report  = bnwp_get_meta('_bnwp_report');
 ?>
 
 <article>
@@ -68,6 +70,40 @@ while (have_posts()) : the_post();
                     </div>
                 <?php endif; ?>
             </div>
+
+            <?php
+            // What a finished project achieved, before anything else on the
+            // page: once entries are closed, the results are what a visitor
+            // came for. bnwp_project_impact() is empty until it has finished.
+            if ($impact) : ?>
+            <section class="stats stats--project" aria-labelledby="impact-title">
+                <div class="stats__head">
+                    <h2 class="panel__title" id="impact-title"><?php echo esc_html(bnwp_text('প্রকল্পের অবদান', 'What this project achieved')); ?></h2>
+                    <?php if ($report) : ?>
+                        <a class="arrow-link" href="<?php echo esc_url($report); ?>">
+                            <?php echo esc_html(bnwp_text('পূর্ণ প্রতিবেদন', 'Full report')); ?>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <div class="stats__grid">
+                    <?php foreach ($impact as $s) : ?>
+                        <div class="stat">
+                            <div class="stat__value tabular"<?php
+                                if ($s['count'] !== null) {
+                                    printf(
+                                        ' data-count="%d" data-suffix="%s"',
+                                        (int) $s['count'],
+                                        esc_attr($s['suffix'])
+                                    );
+                                }
+                            ?>><?php echo esc_html($s['value']); ?></div>
+                            <p class="stat__label"><?php echo esc_html($s['label']); ?></p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -93,6 +129,12 @@ while (have_posts()) : the_post();
                             <dt><?php echo esc_html(bnwp_text('উইকি', 'Wiki')); ?></dt>
                             <dd><a href="<?php echo esc_url($wiki); ?>"><?php
                                 echo esc_html($wikitxt !== '' ? $wikitxt : wp_parse_url($wiki, PHP_URL_HOST));
+                            ?></a></dd>
+                        <?php endif; ?>
+                        <?php if ($report) : ?>
+                            <dt><?php echo esc_html(bnwp_text('প্রতিবেদন', 'Report')); ?></dt>
+                            <dd><a href="<?php echo esc_url($report); ?>"><?php
+                                echo esc_html(bnwp_text('ফলাফল ও প্রতিবেদন', 'Results and report'));
                             ?></a></dd>
                         <?php endif; ?>
                         <dt><?php echo esc_html(bnwp_text('ভাষা', 'Language')); ?></dt>

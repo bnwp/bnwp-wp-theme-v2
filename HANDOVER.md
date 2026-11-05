@@ -288,6 +288,24 @@ flagged as outdated.
 
 ---
 
+### Impact figures are final, and only for finished projects
+
+`_bnwp_impact` uses the home page's `number | Bengali | English` rows and its
+number scaling — both go through `bnwp_parse_stat_rows()` — with three
+differences, all because a finished contest's numbers are results rather than
+a running total: no automatic `+`, a `0` is dropped, and Bengali digits are
+read. `bnwp_project_impact()` returns nothing unless the project's status is
+completed, so figures typed in early stay hidden until the timeline ends.
+
+`_bnwp_report` and `_bnwp_wiki` go through `esc_url_raw` on **both** paths
+via `bnwp_url_meta_keys()`. Over REST `_bnwp_wiki` used to get
+`sanitize_text_field`, which strips percent escapes, so a copied Wikipedia
+link written by script would have been mangled.
+
+The figures for 2025–26 came from the *Contest Stats [BWC]* sheet. The
+Photowalk row has no project on the site, and Wikivoyage 2026 had no numbers
+yet.
+
 ## Known gaps
 
 - **Organisers are empty on all ten projects.** Jury is filled where the wiki

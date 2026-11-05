@@ -479,6 +479,24 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .stat:nth-child(3n+3) .stat__value { color: var(--accent-3); }
 .stat__label { margin: .3rem 0 0; font-size: .9375rem; color: var(--ink-soft); }
 
+/* A finished project's own figures, under its title. The same card as the
+   home page, but the count varies from three to six, so the columns fit the
+   figures instead of a fixed two: two abreast on a phone, one row on a
+   desktop. 8.25rem is what lets two columns sit side by side inside a 375px
+   screen's gutter and padding, and still holds "৫০.৮ হাজার" on one line. */
+.stats--project { margin-top: clamp(1.75rem, 4vw, 2.5rem); }
+.stats__head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: .35rem 1.5rem; margin-bottom: 1.25rem;
+}
+.stats__head .panel__title { margin: 0; }
+.stats--project .stats__grid { grid-template-columns: repeat(auto-fit, minmax(8.25rem, 1fr)); }
+/* Smaller than the home page's figures, which have the whole hero to
+   themselves. Line-height stays above 1.2 because a Bengali unit that wraps
+   to a second line would otherwise touch the first — see HANDOVER.md on the
+   headroom Bengali needs. */
+.stats--project .stat__value { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); line-height: 1.25; }
+
 /* --- 9. Cards ----------------------------------------------------------- */
 
 .card {
