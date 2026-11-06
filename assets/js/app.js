@@ -132,12 +132,20 @@
     return [n, ''];
   }
 
-  function formatScaled(value, unit) {
-    if (!unit) return localise(Math.round(value).toLocaleString('en-US'));
+  /* How many decimals the finished figure shows: 1.3 কোটি has one, 16 লক্ষ
+     none. Mirrors the rounding in bnwp_format_number(). */
+  function decimalsFor(value, unit) {
+    if (!unit) return 0;
     var rounded = Math.round(value * 10) / 10;
-    var text = Math.abs(rounded - Math.round(rounded)) < 0.05
-      ? String(Math.round(rounded))
-      : rounded.toFixed(1);
+    return Math.abs(rounded - Math.round(rounded)) < 0.05 ? 0 : 1;
+  }
+
+  /* The count shows the same number of decimals as the figure it ends on.
+     Deciding afresh each frame sent a figure ending at 16 লক্ষ through
+     12.3 লক্ষ on the way — longer than where it finished. */
+  function formatScaled(value, unit, decimals) {
+    if (!unit) return localise(Math.round(value).toLocaleString('en-US'));
+    var text = decimals ? (Math.round(value * 10) / 10).toFixed(1) : String(Math.round(value));
     return localise(text) + unit;
   }
 
@@ -150,6 +158,15 @@
        label does not flip through হাজার → লক্ষ while counting. */
     var end = scale(target);
     var finalValue = end[0], unit = end[1];
+    var decimals = decimalsFor(finalValue, unit);
+
+    /* Hold the height of the finished figure for the whole count. On a phone
+       "৬৫.৪ হাজার+" wraps to two lines while the early, shorter counts fit on
+       one, so the figure grew and shrank as it counted and everything below
+       it jumped. The server already rendered the final text, so its height
+       is measured here before the count replaces it, and released at the
+       end so the box can follow later resizes. */
+    el.style.minHeight = el.getBoundingClientRect().height + 'px';
 
     var start = performance.now();
     var duration = 1100;
@@ -157,8 +174,12 @@
     function frame(now) {
       var p = Math.min((now - start) / duration, 1);
       var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = formatScaled(finalValue * eased, unit) + suffix;
-      if (p < 1) requestAnimationFrame(frame);
+      el.textContent = formatScaled(finalValue * eased, unit, decimals) + suffix;
+      if (p < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        el.style.minHeight = '';
+      }
     }
     requestAnimationFrame(frame);
   }
