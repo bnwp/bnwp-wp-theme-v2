@@ -469,10 +469,20 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .stats__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 1.25rem; }
 @media (min-width: 420px) { .stats__grid { gap: 1.75rem 2rem; } }
 
+/* Each figure keeps to one line, at a size that fits its column. Bengali
+   digits differ in width by 40% (১ is 0.49em, ৩ and ৬ 0.69em), so a figure
+   changes width as it counts; when it was allowed to wrap, "৬৫.৪ হাজার+"
+   flipped between one line and two and the page below it jumped. The widest
+   figure bnwp_format_number() can produce, "৩৩.৩ হাজার+", is 5.54em, so the
+   size is capped at 17% of the column (room for 5.9em). Where the column is
+   wide the design size wins; a browser without container units keeps it. */
+.stat { container-type: inline-size; }
 .stat__value {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
+  font-size: min(clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem), 17cqi);
   line-height: 1.1;
+  white-space: nowrap;
   color: var(--accent);
 }
 .stat:nth-child(3n+2) .stat__value { color: var(--accent-2); }
@@ -492,10 +502,12 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
 .stats__head .panel__title { margin: 0; }
 .stats--project .stats__grid { grid-template-columns: repeat(auto-fit, minmax(8.25rem, 1fr)); }
 /* Smaller than the home page's figures, which have the whole hero to
-   themselves. Line-height stays above 1.2 because a Bengali unit that wraps
-   to a second line would otherwise touch the first — see HANDOVER.md on the
-   headroom Bengali needs. */
-.stats--project .stat__value { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); line-height: 1.25; }
+   themselves, with the same one-line cap as above. */
+.stats--project .stat__value {
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  font-size: min(clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem), 17cqi);
+  line-height: 1.25;
+}
 
 /* --- 9. Cards ----------------------------------------------------------- */
 

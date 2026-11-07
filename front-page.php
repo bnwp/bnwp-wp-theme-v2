@@ -13,16 +13,22 @@ $project = get_post_type_archive_link('project');
 $stats = bnwp_stats();
 ?>
 
+<?php
+// Nothing in the hero fades in. It is the first screen, so a fade could only
+// hide what was already there: on a phone the logo and the impact numbers
+// vanished and came back on every load, which read as the page flashing.
+// Sections further down still fade in as they scroll into view.
+?>
 <section class="hero">
     <div class="wrap">
 
         <?php if ($stats) : ?>
         <div class="hero__showcase">
-            <div class="hero__mark reveal">
+            <div class="hero__mark">
                 <?php bnwp_logo_img(300, 'hero__mark-img', 'eager'); ?>
             </div>
 
-            <div class="stats reveal">
+            <div class="stats">
                 <p class="panel__title"><?php echo esc_html(bnwp_home_text('impact_title')); ?></p>
                 <div class="stats__grid">
                     <?php foreach ($stats as $s) : ?>
@@ -45,13 +51,13 @@ $stats = bnwp_stats();
         <?php endif; ?>
 
         <div class="hero__intro">
-            <p class="eyebrow reveal"><?php echo esc_html(bnwp_home_text('eyebrow')); ?></p>
+            <p class="eyebrow"><?php echo esc_html(bnwp_home_text('eyebrow')); ?></p>
 
-            <h1 class="reveal"><?php echo esc_html(bnwp_home_text('heading')); ?></h1>
+            <h1><?php echo esc_html(bnwp_home_text('heading')); ?></h1>
 
-            <p class="hero__lead reveal"><?php echo esc_html(bnwp_home_text('lead')); ?></p>
+            <p class="hero__lead"><?php echo esc_html(bnwp_home_text('lead')); ?></p>
 
-            <div class="hero__actions reveal">
+            <div class="hero__actions">
                 <a class="btn btn--primary" href="<?php echo esc_url(bnwp_page_url('about', $lang)); ?>">
                     <?php echo esc_html(bnwp_home_text('cta_primary')); ?>
                 </a>

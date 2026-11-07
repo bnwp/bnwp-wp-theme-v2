@@ -256,7 +256,7 @@ track will otherwise size to it and drag the page sideways on a phone.
 Every external image carries an `onerror` fallback, because Commons files do
 get deleted. One did, mid-project.
 
-### Two CSS traps specific to this site
+### Three CSS traps specific to this site
 
 - **Bengali needs headroom.** The ই-কার paints well above the font's declared
   ascent — 21px against 17px at a 22px size. Any element combining
@@ -264,6 +264,20 @@ get deleted. One did, mid-project.
   tolerates 1.1, which is why it is easy to miss.
 - **`.brand__name` is shared** by the header and the footer. Rules written for
   one must be scoped, or they silently affect the other.
+- **Bengali digits are not equal widths.** In Tiro Bangla ১ is 0.49em and ৩/৬
+  are 0.69em, so a counting figure changes width every frame. Impact figures
+  are therefore `nowrap`, capped at `17cqi` of their column so the widest
+  possible one (`৩৩.৩ হাজার+`, 5.54em) still fits. Letting them wrap made the
+  home page jump on phones while counting; holding the height in JS (3.12.2)
+  was not enough, because a count can be *wider* than the figure it ends on.
+
+The home page hero has no `.reveal` fade-in. It is the first screen, so the fade
+could only hide content already there — on phones it read as a flash on every
+load.
+
+After uploading a theme, **purge LiteSpeed**. The cached HTML carries the old
+`app.js?ver=` stamp, and browsers that already hold that URL keep running the
+old script — which is how 3.12.2's fix seemed not to work on a phone.
 
 ### Content that is editable without code
 

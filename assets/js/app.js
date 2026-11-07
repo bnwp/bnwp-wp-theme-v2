@@ -160,13 +160,10 @@
     var finalValue = end[0], unit = end[1];
     var decimals = decimalsFor(finalValue, unit);
 
-    /* Hold the height of the finished figure for the whole count. On a phone
-       "৬৫.৪ হাজার+" wraps to two lines while the early, shorter counts fit on
-       one, so the figure grew and shrank as it counted and everything below
-       it jumped. The server already rendered the final text, so its height
-       is measured here before the count replaces it, and released at the
-       end so the box can follow later resizes. */
-    el.style.minHeight = el.getBoundingClientRect().height + 'px';
+    /* The figure's size cannot change while it counts: app.css keeps every
+       figure on one line at a size that fits the widest one possible. (3.12.2
+       held the height here instead, which still let a wider count wrap, and
+       could lock in a height measured before the Bengali font arrived.) */
 
     var start = performance.now();
     var duration = 1100;
@@ -175,11 +172,7 @@
       var p = Math.min((now - start) / duration, 1);
       var eased = 1 - Math.pow(1 - p, 3);
       el.textContent = formatScaled(finalValue * eased, unit, decimals) + suffix;
-      if (p < 1) {
-        requestAnimationFrame(frame);
-      } else {
-        el.style.minHeight = '';
-      }
+      if (p < 1) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
   }
