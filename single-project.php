@@ -111,6 +111,13 @@ while (have_posts()) : the_post();
         <div class="wrap layout-aside">
             <div>
                 <div class="prose"><?php the_content(); ?></div>
+
+                <?php $about = bnwp_project_posts(); if ($about) : ?>
+                <section class="project-posts" style="margin-top:2.5rem;">
+                    <h2 style="font-size:var(--step-2);margin-bottom:1rem;"><?php echo esc_html(bnwp_text('এই প্রকল্প নিয়ে লেখা', 'Posts about this project')); ?></h2>
+                    <?php bnwp_post_rows($about); ?>
+                </section>
+                <?php endif; ?>
             </div>
 
             <aside class="stack aside--project" style="--flow:1.25rem;">

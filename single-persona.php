@@ -61,6 +61,13 @@ while (have_posts()) : the_post();
                     <p class="hero__lead" style="margin-top:0;"><?php echo esc_html($bio); ?></p>
                 <?php endif; ?>
                 <div class="prose"><?php the_content(); ?></div>
+
+                <?php $written = bnwp_person_posts(); if ($written) : ?>
+                <section class="person-posts" style="margin-top:2.5rem;">
+                    <h2 style="font-size:var(--step-2);margin-bottom:1rem;"><?php echo esc_html(bnwp_text('লেখা', 'Posts')); ?></h2>
+                    <?php bnwp_post_rows($written); ?>
+                </section>
+                <?php endif; ?>
             </div>
 
             <aside class="aside--person stack" style="--flow:1.25rem;">

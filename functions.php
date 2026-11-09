@@ -842,6 +842,8 @@ function bnwp_meta_keys() {
         '_bnwp_organisers', '_bnwp_jury', '_bnwp_link', '_bnwp_links',
         // what a finished project achieved, and where its report is
         '_bnwp_impact', '_bnwp_report',
+        // which projects a post is about, as project IDs
+        '_bnwp_projects',
         // the English half of each record
         '_bnwp_title_en', '_bnwp_body_en', '_bnwp_excerpt_en',
         '_bnwp_lead_en', '_bnwp_role_en', '_bnwp_bio_en', '_bnwp_location_en',
@@ -912,6 +914,9 @@ function bnwp_meta_sanitizer($key) {
     }
     if (in_array($key, bnwp_media_meta_keys(), true)) {
         return 'bnwp_sanitize_media_ref';
+    }
+    if (in_array($key, bnwp_list_meta_keys(), true)) {
+        return 'bnwp_sanitize_id_list';
     }
     if (in_array($key, bnwp_url_meta_keys(), true)) {
         return 'esc_url_raw';
@@ -1524,10 +1529,129 @@ function bnwp_external_mark() {
         . 'fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>';
 }
 
-/** Meta keys stored as a comma-separated list rather than a single value. */
+/** Meta keys stored as a comma-separated list of post IDs. */
 function bnwp_list_meta_keys() {
-    return array();
+    return array('_bnwp_projects');
 }
+
+/**
+ * "373, 445" from an array of checkboxes or from a string written over REST,
+ * so both paths store the same shape. Anything that is not a whole number is
+ * dropped, as are duplicates.
+ */
+function bnwp_sanitize_id_list($value) {
+    $items = is_array($value) ? $value : preg_split('/[\s,]+/', (string) $value);
+    $ids   = array_unique(array_filter(array_map('absint', $items)));
+    return implode(', ', $ids);
+}
+
+/** The IDs in a list meta value, as integers. */
+function bnwp_id_list($value) {
+    return array_values(array_filter(array_map('absint', preg_split('/[\s,]+/', (string) $value))));
+}
+
+/**
+ * Posts written by a team member: every published post whose Author wiki
+ * username is theirs. The profile slug counts too, because
+ * bnwp_persona_by_key() resolves an author either way and the two should
+ * agree on who wrote what.
+ */
+function bnwp_person_posts($post_id = null) {
+    $post_id = $post_id ? $post_id : get_the_ID();
+    $keys = array_values(array_unique(array_filter(array(
+        trim((string) get_post_meta($post_id, '_bnwp_username', true)),
+        get_post_field('post_name', $post_id),
+    ))));
+    if (!$keys) {
+        return array();
+    }
+    return get_posts(array(
+        'post_type'      => 'post',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'no_found_rows'  => true,
+        'meta_query'     => array(array('key' => '_bnwp_user', 'value' => $keys, 'compare' => 'IN')),
+    ));
+}
+
+/**
+ * Posts written about a project, newest first. The links live on the posts
+ * (_bnwp_projects, ticked in the post's BNWP Post Details box), so the posts
+ * that have any are read and filtered here rather than matched in SQL, which
+ * could only do it with a LIKE that finds 12 inside 123.
+ */
+function bnwp_project_posts($project_id = null) {
+    $project_id = (int) ($project_id ? $project_id : get_the_ID());
+    $out = array();
+    foreach (get_posts(array(
+        'post_type'      => 'post',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'no_found_rows'  => true,
+        'meta_key'       => '_bnwp_projects',
+        'meta_compare'   => 'EXISTS',
+    )) as $post) {
+        if (in_array($project_id, bnwp_id_list(get_post_meta($post->ID, '_bnwp_projects', true)), true)) {
+            $out[] = $post;
+        }
+    }
+    return $out;
+}
+
+/**
+ * A list of posts in the shape the home page uses for its recent posts:
+ * date, title and a line of excerpt, then the reading time.
+ */
+function bnwp_post_rows($posts) {
+    if (!$posts) {
+        return;
+    }
+    global $post;
+    echo '<ul class="postlist">';
+    foreach ($posts as $post) {
+        setup_postdata($post);
+        echo '<li class="postlist__item">';
+        printf('<a class="postlist__link" href="%s">', esc_url(bnwp_lang_arg(get_permalink())));
+        printf('<time class="postlist__meta" datetime="%s">%s</time>', esc_attr(bnwp_iso_date()), esc_html(bnwp_post_date()));
+        printf('<span><span class="postlist__title">%s</span>', esc_html(get_the_title()));
+        $excerpt = get_the_excerpt();
+        if ($excerpt) {
+            printf('<span class="postlist__excerpt">%s</span>', esc_html(wp_trim_words($excerpt, 20, '…')));
+        }
+        echo '</span>';
+        printf('<span class="postlist__meta">%s</span>', esc_html(bnwp_reading_time()));
+        echo '</a></li>';
+    }
+    echo '</ul>';
+    wp_reset_postdata();
+}
+
+/**
+ * A post's author or projects decide which profile and project pages list
+ * it, and LiteSpeed caches those pages for a week — saving the post purges
+ * the post, not them. So when either field changes, or a post that has
+ * either is published or taken down, the page cache is emptied. Posts are
+ * few, so this is rare.
+ */
+function bnwp_post_links_changed($meta_id, $post_id, $meta_key) {
+    if (in_array($meta_key, array('_bnwp_projects', '_bnwp_user'), true) && get_post_type($post_id) === 'post') {
+        bnwp_purge_page_cache();
+    }
+}
+add_action('added_post_meta', 'bnwp_post_links_changed', 10, 3);
+add_action('updated_post_meta', 'bnwp_post_links_changed', 10, 3);
+add_action('deleted_post_meta', 'bnwp_post_links_changed', 10, 3);
+
+function bnwp_post_status_changed($new_status, $old_status, $post) {
+    if ($post->post_type !== 'post' || $new_status === $old_status
+        || ($new_status !== 'publish' && $old_status !== 'publish')) {
+        return;
+    }
+    if (get_post_meta($post->ID, '_bnwp_projects', true) !== '' || get_post_meta($post->ID, '_bnwp_user', true) !== '') {
+        bnwp_purge_page_cache();
+    }
+}
+add_action('transition_post_status', 'bnwp_post_status_changed', 10, 3);
 
 /** One row: a team member, drawn from their own record. */
 function bnwp_person_row_post($post, $note = '') {
@@ -3806,6 +3930,32 @@ function bnwp_persona_team_fields($post) {
 function bnwp_post_box($post) {
     wp_nonce_field('bnwp_save_meta', 'bnwp_meta_nonce');
     bnwp_field_text(__('Author wiki username', 'bnwp'), '_bnwp_user', bnwp_get_meta('_bnwp_user', $post->ID));
+    echo '<p class="description" style="margin-top:-8px;">'
+        . esc_html__('Links the author line to their profile on this site when the username belongs to a team member, and lists the post on that profile.', 'bnwp')
+        . '</p>';
+
+    $chosen   = bnwp_id_list(bnwp_get_meta('_bnwp_projects', $post->ID));
+    $projects = get_posts(bnwp_project_order_args(array(
+        'post_type'      => 'project',
+        'post_status'    => array('publish', 'draft'),
+        'posts_per_page' => -1,
+        'no_found_rows'  => true,
+    )));
+    echo '<fieldset class="bnwp-field"><legend><strong>' . esc_html__('Projects', 'bnwp') . '</strong></legend>';
+    // Always sent, so unticking every box clears the list.
+    echo '<input type="hidden" name="_bnwp_projects[]" value="">';
+    echo '<div style="max-height:14em;overflow:auto;">';
+    foreach ($projects as $project) {
+        printf(
+            '<label style="display:block;margin:.25em 0;"><input type="checkbox" name="_bnwp_projects[]" value="%d"%s> %s</label>',
+            (int) $project->ID,
+            checked(in_array((int) $project->ID, $chosen, true), true, false),
+            esc_html(get_the_title($project))
+        );
+    }
+    echo '</div><p class="description">'
+        . esc_html__('The projects this post is about. It is listed on each one’s page.', 'bnwp')
+        . '</p></fieldset>';
 }
 
 function bnwp_save_meta($post_id) {
@@ -3829,9 +3979,7 @@ function bnwp_save_meta($post_id) {
         $raw = wp_unslash($_POST[$key]);
 
         if (in_array($key, bnwp_list_meta_keys(), true)) {
-            $items = is_array($raw) ? $raw : explode(',', (string) $raw);
-            $items = array_filter(array_map('sanitize_text_field', array_map('trim', $items)));
-            update_post_meta($post_id, $key, implode(', ', array_unique($items)));
+            update_post_meta($post_id, $key, bnwp_sanitize_id_list($raw));
             continue;
         }
 

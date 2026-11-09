@@ -296,8 +296,17 @@ Nobody is filed under it, and nobody should be.
 ### Adding a post
 
 **Posts → Add New**, as normal, plus the English panel. The **BNWP Post
-Details** box adds the author's wiki username, which links to their Meta
-profile.
+Details** box adds two things:
+
+- **Author wiki username.** When it belongs to a team member, the author line
+  links to their profile here, and the post is listed under **Posts** on that
+  profile. Anyone else links to their Meta user page.
+- **Projects.** Tick the projects the post is about; it is listed under
+  **Posts about this project** on each one's page. Stored as project IDs, so
+  renaming a project does not break the link.
+
+Changing either one empties the LiteSpeed cache, so the profile and project
+pages show the change straight away.
 
 ---
 
@@ -410,6 +419,7 @@ _bnwp_email     _bnwp_img       _bnwp_bio       _bnwp_bio_en
 _bnwp_link      _bnwp_user
 _bnwp_organisers  _bnwp_jury        (comma-separated wiki usernames)
 _bnwp_impact      _bnwp_report      (impact figures, one per line; report URL)
+_bnwp_projects                      (on a post: IDs of the projects it is about)
 _bnwp_title_en    _bnwp_body_en     _bnwp_excerpt_en
 ```
 
