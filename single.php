@@ -8,6 +8,17 @@ get_header();
 
 while (have_posts()) : the_post();
     $author_wiki = bnwp_get_meta('_bnwp_user');
+
+    // The author links to their profile on this site when the wiki username
+    // belongs to a team member, and to their Meta user page otherwise. A
+    // draft profile would 404, so only a published one counts.
+    $author_url = '';
+    if ($author_wiki) {
+        $author_person = bnwp_persona_by_key($author_wiki);
+        $author_url = ($author_person && get_post_status($author_person) === 'publish')
+            ? bnwp_person_url($author_person->ID)
+            : 'https://meta.wikimedia.org/wiki/User:' . rawurlencode($author_wiki);
+    }
 ?>
 
 <article>
@@ -28,7 +39,7 @@ while (have_posts()) : the_post();
                 <?php if ($author_wiki) : ?>
                     <span aria-hidden="true">·</span>
                     <span><?php echo esc_html(bnwp_text('লেখক', 'By')); ?>
-                        <a href="<?php echo esc_url('https://meta.wikimedia.org/wiki/User:' . rawurlencode($author_wiki)); ?>">@<?php echo esc_html($author_wiki); ?></a>
+                        <a href="<?php echo esc_url($author_url); ?>">@<?php echo esc_html($author_wiki); ?></a>
                     </span>
                 <?php endif; ?>
                 <?php $cats = get_the_category_list(', '); if ($cats) : ?>
