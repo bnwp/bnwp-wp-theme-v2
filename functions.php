@@ -4048,3 +4048,256 @@ function bnwp_logo_img($size = 40, $class = '', $loading = 'lazy') {
         $loading === 'eager' ? ' fetchpriority="high"' : ''
     );
 }
+
+
+/* -------------------------------------------------------------------------
+ * 11. Comments — the list and the form, in the language being read
+ * ---------------------------------------------------------------------- */
+
+/** "৩টি মন্তব্য" / "3 comments". */
+function bnwp_comment_count_label($count) {
+    $count = (int) $count;
+    if (bnwp_is_en()) {
+        return $count === 1 ? '1 comment' : sprintf('%d comments', $count);
+    }
+    return bnwp_bn_numerals($count) . 'টি মন্তব্য';
+}
+
+/**
+ * When a comment was left: "15 November 2026, 9:15 pm", or in Bengali
+ * "১৫ নভেম্বর ২০২৬, রাত ৯:১৫" — naming the part of the day, which is how a
+ * Bengali reader says a time, rather than writing am/pm.
+ */
+function bnwp_comment_date($comment) {
+    $ts = strtotime($comment->comment_date_gmt . ' UTC');
+    if (!$ts) {
+        return '';
+    }
+
+    if (bnwp_is_en()) {
+        return wp_date('j F Y, g:i a', $ts);
+    }
+
+    $hour = (int) wp_date('G', $ts);
+    if ($hour >= 4 && $hour < 6) {
+        $part = 'ভোর';
+    } elseif ($hour >= 6 && $hour < 12) {
+        $part = 'সকাল';
+    } elseif ($hour >= 12 && $hour < 15) {
+        $part = 'দুপুর';
+    } elseif ($hour >= 15 && $hour < 18) {
+        $part = 'বিকেল';
+    } elseif ($hour >= 18 && $hour < 20) {
+        $part = 'সন্ধ্যা';
+    } else {
+        $part = 'রাত';
+    }
+
+    $months = bnwp_bn_months();
+    return sprintf(
+        '%s %s %s, %s %s',
+        bnwp_bn_numerals(wp_date('j', $ts)),
+        $months[(int) wp_date('n', $ts)],
+        bnwp_bn_numerals(wp_date('Y', $ts)),
+        $part,
+        bnwp_bn_numerals(wp_date('g:i', $ts))
+    );
+}
+
+/** First letter of a commenter's name, for the lettered circle beside it. */
+function bnwp_comment_initial($name) {
+    $name = trim((string) $name);
+    if ($name === '') {
+        return '?';
+    }
+    return mb_strtoupper(mb_substr($name, 0, 1, 'UTF-8'), 'UTF-8');
+}
+
+/**
+ * One comment, for wp_list_comments(). WordPress closes the <li> itself.
+ *
+ * A lettered circle stands in for the avatar: Gravatar would load from a
+ * third party on every view of the page, and the privacy statement does not
+ * list it among the services the site uses.
+ */
+function bnwp_comment($comment, $args, $depth) {
+    $tag = (isset($args['style']) && $args['style'] === 'div') ? 'div' : 'li';
+    $id  = (int) $comment->comment_ID;
+
+    if (in_array($comment->comment_type, array('pingback', 'trackback'), true)) {
+        printf(
+            '<%1$s id="comment-%2$d" %3$s><div class="comment__body comment__body--ping">%4$s %5$s</div>',
+            $tag,
+            $id,
+            comment_class('', $comment, null, false),
+            esc_html(bnwp_text('উল্লেখ:', 'Mentioned by:')),
+            get_comment_author_link($comment)
+        );
+        return;
+    }
+
+    // A comment awaiting moderation is listed only for the person who left
+    // it. As in core's own walker, its reply link and its author's website
+    // link wait for approval unless the commenter's cookie is present, so a
+    // spammer's link never goes live before a moderator has seen it.
+    $pending    = $comment->comment_approved === '0';
+    $commenter  = wp_get_current_commenter();
+    $show_links = !$pending || !empty($commenter['comment_author']);
+    $author     = $show_links ? get_comment_author_link($comment) : esc_html(get_comment_author($comment));
+    $held_note  = empty($commenter['comment_author_email'])
+        ? bnwp_text(
+            'আপনার মন্তব্যটি পর্যালোচনার অপেক্ষায় আছে। এটি কেবল আপনি দেখতে পাচ্ছেন; অনুমোদনের পর সবাই এটি দেখতে পাবে।',
+            'Your comment is awaiting moderation. This is a preview; your comment will be visible after it has been approved.'
+        )
+        : bnwp_text('আপনার মন্তব্যটি পর্যালোচনার অপেক্ষায় আছে।', 'Your comment is awaiting moderation.');
+
+    $ts    = strtotime($comment->comment_date_gmt . ' UTC');
+    $reply = !$show_links ? '' : get_comment_reply_link(array_merge($args, array(
+        'add_below'     => 'div-comment',
+        'depth'         => $depth,
+        'max_depth'     => $args['max_depth'],
+        'reply_text'    => bnwp_text('উত্তর দিন', 'Reply'),
+        'reply_to_text' => bnwp_text('%s-কে উত্তর দিন', 'Reply to %s'),
+        'login_text'    => bnwp_text('উত্তর দিতে লগইন করুন', 'Log in to reply'),
+    )), $comment);
+    $edit  = current_user_can('edit_comment', $id)
+        ? sprintf(
+            '<a class="comment-edit-link" href="%s">%s</a>',
+            esc_url(get_edit_comment_link($comment)),
+            esc_html(bnwp_text('সম্পাদনা', 'Edit'))
+        )
+        : '';
+    ?>
+    <<?php echo $tag; ?> id="comment-<?php echo $id; ?>" <?php comment_class('', $comment); ?>>
+        <article id="div-comment-<?php echo $id; ?>" class="comment__body">
+            <header class="comment__meta">
+                <span class="comment__avatar" aria-hidden="true"><?php echo esc_html(bnwp_comment_initial(get_comment_author($comment))); ?></span>
+                <span class="comment__who">
+                    <span class="comment__author"><?php echo $author; // a core-built link, or an escaped name ?></span>
+                    <a class="comment__date" href="<?php echo esc_url(get_comment_link($comment, $args)); ?>">
+                        <time datetime="<?php echo esc_attr($ts ? gmdate('c', $ts) : ''); ?>"><?php echo esc_html(bnwp_comment_date($comment)); ?></time>
+                    </a>
+                </span>
+            </header>
+
+            <?php if ($pending) : ?>
+                <p class="comment__awaiting"><?php echo esc_html($held_note); ?></p>
+            <?php endif; ?>
+
+            <div class="comment__content"><?php comment_text($comment); ?></div>
+
+            <?php if ($reply || $edit) : ?>
+                <footer class="comment__actions"><?php echo $reply . $edit; // both assembled above from escaped parts ?></footer>
+            <?php endif; ?>
+        </article>
+    <?php
+}
+
+/**
+ * Arguments for comment_form(), every string in the reader's language.
+ *
+ * Passing 'fields' replaces WordPress's own set wholesale, so the cookie
+ * opt-in is rebuilt here under the same condition core applies: the
+ * Discussion setting is on and the cookie action is still hooked.
+ */
+function bnwp_comment_form_args() {
+    $commenter = wp_get_current_commenter();
+    $required  = (bool) get_option('require_name_email');
+    $star      = ' <span class="required" aria-hidden="true">*</span>';
+    $req_star  = $required ? $star : '';
+    $req_attr  = $required ? ' required' : '';
+    $req_note  = ' <span class="required-field-message">'
+        . esc_html(bnwp_text('* চিহ্নিত ঘর পূরণ করা আবশ্যক।', 'Fields marked * are required.'))
+        . '</span>';
+    $here      = get_permalink();
+
+    $fields = array(
+        'author' => sprintf(
+            '<p class="comment-form-author"><label for="author">%s%s</label><input id="author" name="author" type="text" value="%s" maxlength="245" autocomplete="name"%s></p>',
+            esc_html(bnwp_text('নাম', 'Name')),
+            $req_star,
+            esc_attr($commenter['comment_author']),
+            $req_attr
+        ),
+        'email'  => sprintf(
+            '<p class="comment-form-email"><label for="email">%s%s</label><input id="email" name="email" type="email" value="%s" maxlength="100" autocomplete="email" aria-describedby="email-notes"%s></p>',
+            esc_html(bnwp_text('ইমেইল', 'Email')),
+            $req_star,
+            esc_attr($commenter['comment_author_email']),
+            $req_attr
+        ),
+        'url'    => sprintf(
+            '<p class="comment-form-url"><label for="url">%s</label><input id="url" name="url" type="url" value="%s" maxlength="200" autocomplete="url"></p>',
+            esc_html(bnwp_text('ওয়েবসাইট', 'Website')),
+            esc_attr($commenter['comment_author_url'])
+        ),
+    );
+
+    if (has_action('set_comment_cookies', 'wp_set_comment_cookies') && get_option('show_comments_cookies_opt_in')) {
+        $fields['cookies'] = sprintf(
+            '<p class="comment-form-cookies-consent"><input id="wp-comment-cookies-consent" name="wp-comment-cookies-consent" type="checkbox" value="yes"%s><label for="wp-comment-cookies-consent">%s</label></p>',
+            empty($commenter['comment_author_email']) ? '' : ' checked',
+            esc_html(bnwp_text(
+                'পরের বার মন্তব্য করার জন্য আমার নাম, ইমেইল ও ওয়েবসাইট এই ব্রাউজারে মনে রাখুন।',
+                'Save my name, email and website in this browser for the next time I comment.'
+            ))
+        );
+    }
+
+    return array(
+        'fields'               => $fields,
+        'comment_field'        => sprintf(
+            '<p class="comment-form-comment"><label for="comment">%s%s</label><textarea id="comment" name="comment" rows="6" maxlength="65525" required></textarea></p>',
+            esc_html(bnwp_text('মন্তব্য', 'Comment')),
+            is_user_logged_in() ? '' : $star
+        ),
+        'comment_notes_before' => '<p class="comment-notes"><span id="email-notes">'
+            . esc_html(bnwp_text('আপনার ইমেইল ঠিকানা প্রকাশ করা হবে না।', 'Your email address will not be published.'))
+            . '</span>' . $req_note . '</p>',
+        'comment_notes_after'  => '',
+        // A signed-in reader has only the comment box to fill, so this line
+        // carries no "fields marked *" note — appended here it read as if
+        // "Log out" were itself a required field.
+        'logged_in_as'         => sprintf(
+            '<p class="logged-in-as">%s</p>',
+            sprintf(
+                bnwp_text(
+                    'আপনি <b>%1$s</b> হিসেবে লগইন করেছেন। <a href="%2$s">প্রোফাইল সম্পাদনা করুন</a> অথবা <a href="%3$s">লগ আউট করুন</a>।',
+                    'Logged in as <b>%1$s</b>. <a href="%2$s">Edit your profile</a> or <a href="%3$s">log out</a>.'
+                ),
+                esc_html(wp_get_current_user()->display_name),
+                esc_url(get_edit_user_link()),
+                esc_url(wp_logout_url($here))
+            )
+        ),
+        'must_log_in'          => sprintf(
+            '<p class="must-log-in">%s</p>',
+            sprintf(
+                bnwp_text('মন্তব্য করতে হলে <a href="%s">লগইন করুন</a>।', 'You must be <a href="%s">logged in</a> to post a comment.'),
+                esc_url(wp_login_url($here))
+            )
+        ),
+        'title_reply'          => bnwp_text('মন্তব্য করুন', 'Leave a comment'),
+        'title_reply_to'       => bnwp_text('%s-কে উত্তর দিন', 'Reply to %s'),
+        'title_reply_before'   => '<h2 id="reply-title" class="comments__title comment-reply-title">',
+        'title_reply_after'    => '</h2>',
+        'cancel_reply_link'    => bnwp_text('উত্তর বাতিল করুন', 'Cancel reply'),
+        'label_submit'         => bnwp_text('মন্তব্য পাঠান', 'Post comment'),
+        'class_submit'         => 'btn btn--primary',
+        'format'               => 'html5',
+    );
+}
+
+/**
+ * After a comment is posted, wp-comments-post.php sends the reader to the
+ * comment's link — but that request has no /en/ in its address, so the link
+ * comes back Bengali and an English reader lands in the other language. On
+ * an English page the form carries its own address back instead; WordPress
+ * appends the #comment- anchor, and wp_safe_redirect() keeps it on this site.
+ */
+function bnwp_comment_redirect_field() {
+    if (bnwp_is_en()) {
+        printf('<input type="hidden" name="redirect_to" value="%s">', esc_url(get_permalink()));
+    }
+}
+add_action('comment_form', 'bnwp_comment_redirect_field');
