@@ -329,6 +329,7 @@ page needs a template edit any more.
 | Section | Format, one row per line |
 |---|---|
 | **Impact numbers** | `number \| Bengali label \| English label` |
+| **Funding** | `Bengali name \| English name \| URL \| image` — shown first, under আর্থিক পৃষ্ঠপোষকতায় / Funded by |
 | **Partners** | `Bengali name \| English name \| URL \| image` |
 | **Social channels** | `Label \| URL \| icon` |
 

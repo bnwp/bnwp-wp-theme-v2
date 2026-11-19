@@ -1060,6 +1060,19 @@ code, pre, .tabular { font-variant-numeric: tabular-nums; }
   gap: 1rem;
   max-width: 860px;
   margin-inline: auto;
+  margin-top: 2rem;
+}
+.partners__title { font-size: var(--step-3); margin: 0; }
+/* Funders, then partners, in one section: the second heading needs room
+   from the tiles above it. */
+.partners + .partners__title { margin-top: clamp(2.5rem, 6vw, 3.5rem); }
+
+/* Whoever funds the work comes first and a size up: usually one or two
+   organisations, so a wider tile and a bigger logo, still the same card. */
+.partners--funders .partner { flex: 0 1 280px; min-height: 176px; }
+.partners--funders .partner img { height: 76px; }
+@media (max-width: 560px) {
+  .partners--funders .partner { flex-basis: 100%; max-width: 320px; }
 }
 .partner { flex: 0 1 calc(25% - .75rem); min-width: 160px; }
 @media (max-width: 560px) {

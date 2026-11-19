@@ -594,8 +594,11 @@ function bnwp_encode_url($url) {
         return rawurlencode(rawurldecode($segment));
     }, explode('/', $parts['path'])));
 
+    // The port is kept: production has none, but a site on localhost:8888
+    // lost it here and every theme-shipped logo pointed at the wrong server.
     $out = (isset($parts['scheme']) ? $parts['scheme'] . '://' : '')
-        . (isset($parts['host']) ? $parts['host'] : '') . $path;
+        . (isset($parts['host']) ? $parts['host'] : '')
+        . (isset($parts['port']) ? ':' . $parts['port'] : '') . $path;
 
     return empty($parts['query']) ? $out : $out . '?' . $parts['query'];
 }
@@ -1436,6 +1439,7 @@ function bnwp_home_defaults() {
         'team_title'     => array('মূল দল', 'Core team'),
         'team_sub'       => array('যারা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
         'team_all'       => array('সব সদস্য', 'All members'),
+        'funders_title'  => array('আর্থিক পৃষ্ঠপোষকতায়', 'Funded by'),
         'partners_title' => array('আমাদের অংশীদার', 'Our partners'),
 
         // The members listing at /teams/. It is an archive rather than a
@@ -3207,7 +3211,23 @@ function bnwp_partners_default() {
 
 /** One partner per line: Bengali name | English name | URL | image */
 function bnwp_partners() {
-    $raw  = get_theme_mod('bnwp_partners', bnwp_partners_default());
+    return bnwp_logo_rows(get_theme_mod('bnwp_partners', bnwp_partners_default()));
+}
+
+/** Who funds the work, shown above the partners. Wikimedia Bangladesh by default. */
+function bnwp_funders_default() {
+    return 'উইকিমিডিয়া বাংলাদেশ | Wikimedia Bangladesh | https://wikimedia.org.bd/ | Wikimedia_Bangladesh_logo.png';
+}
+
+function bnwp_funders() {
+    return bnwp_logo_rows(get_theme_mod('bnwp_funders', bnwp_funders_default()));
+}
+
+/**
+ * "Bengali name | English name | URL | image" rows, as the Partners and
+ * Funding boxes in the Customiser both hold them.
+ */
+function bnwp_logo_rows($raw) {
     $rows = array();
 
     foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
@@ -3234,6 +3254,23 @@ function bnwp_partners() {
         );
     }
     return $rows;
+}
+
+/** A row of logo tiles: the partners, or with $modifier 'funders', the funders. */
+function bnwp_logo_tiles($rows, $modifier = '') {
+    if (!$rows) {
+        return;
+    }
+    printf('<div class="partners%s" data-stagger>', $modifier !== '' ? ' partners--' . esc_attr($modifier) : '');
+    foreach ($rows as $p) {
+        $tag = $p['url'] !== '' ? 'a' : 'div';
+        printf('<%s class="partner reveal"%s>', $tag, $p['url'] !== '' ? ' href="' . esc_url($p['url']) . '" rel="noopener"' : '');
+        if ($p['image'] !== '') {
+            bnwp_image($p['image'], array('w' => 250, 'alt' => $p['name'], 'fit' => 'contain'));
+        }
+        printf('<span class="partner__name">%s</span></%s>', esc_html($p['name']), $tag);
+    }
+    echo '</div>';
 }
 
 function bnwp_socials_default() {
@@ -3343,6 +3380,7 @@ function bnwp_customize($wp_customize) {
         'team_title'     => __('Team: heading', 'bnwp'),
         'team_sub'       => __('Team: sub-heading', 'bnwp'),
         'team_all'       => __('Team: link to all', 'bnwp'),
+        'funders_title'  => __('Funding: heading', 'bnwp'),
         'partners_title' => __('Partners: heading', 'bnwp'),
     );
     foreach ($bnwp_home_labels as $bnwp_key => $bnwp_label) {
@@ -3410,6 +3448,23 @@ function bnwp_customize($wp_customize) {
         'section'     => 'bnwp_partners_section',
         'type'        => 'textarea',
         'input_attrs' => array('rows' => 6, 'style' => 'font-family:ui-monospace,monospace;'),
+    ));
+
+    $wp_customize->add_section('bnwp_funders_section', array(
+        'title'       => __('Funding', 'bnwp'),
+        'priority'    => 31,
+        'description' => __('Who funds the work, shown above the partners on the home page under its own heading (set in Home page text). One per line, the same shape as Partners:<br><strong>Bengali name | English name | URL | image</strong><br><br>Leave it empty to hide the heading and the row.', 'bnwp'),
+    ));
+    $wp_customize->add_setting('bnwp_funders', array(
+        'default'           => bnwp_funders_default(),
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport'         => 'refresh',
+    ));
+    $wp_customize->add_control('bnwp_funders', array(
+        'label'       => __('Rows', 'bnwp'),
+        'section'     => 'bnwp_funders_section',
+        'type'        => 'textarea',
+        'input_attrs' => array('rows' => 3, 'style' => 'font-family:ui-monospace,monospace;'),
     ));
 
     $wp_customize->add_section('bnwp_socials_section', array(
