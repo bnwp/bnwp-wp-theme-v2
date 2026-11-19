@@ -3486,6 +3486,112 @@ function bnwp_customize($wp_customize) {
 }
 add_action('customize_register', 'bnwp_customize');
 
+/* -------------------------------------------------------------------------
+ * The Customiser boxes over REST
+ *
+ * WordPress keeps theme settings out of the REST API, so the home page's
+ * boxes could only be changed by hand. /bnwp/v1/customiser reads and writes
+ * exactly those boxes and nothing else, for users who could open the
+ * Customiser anyway.
+ *
+ * A write must say what it expects each box to hold now ("expect"). If the
+ * site disagrees — somebody changed it in the Customiser since it was read —
+ * nothing is written and the reply is 409 with what the site has. That is
+ * the guard a script needs so it never replaces an editor's change unseen.
+ * ---------------------------------------------------------------------- */
+
+/** Box name => default, for every box the endpoint may read or write. */
+function bnwp_rest_customiser_boxes() {
+    $boxes = array(
+        'bnwp_stats'    => bnwp_stats_default(),
+        'bnwp_funders'  => bnwp_funders_default(),
+        'bnwp_partners' => bnwp_partners_default(),
+        'bnwp_socials'  => bnwp_socials_default(),
+    );
+    foreach (array_keys(bnwp_home_defaults()) as $key) {
+        $boxes['bnwp_home_' . $key] = '';   // empty means "use the theme's wording"
+    }
+    return $boxes;
+}
+
+/** What one box holds now: its stored text, or the default when unset. */
+function bnwp_rest_customiser_value($name) {
+    $boxes = bnwp_rest_customiser_boxes();
+    return (string) get_theme_mod($name, $boxes[$name]);
+}
+
+function bnwp_rest_customiser_read() {
+    $mods = get_theme_mods();
+    $out  = array();
+    foreach (bnwp_rest_customiser_boxes() as $name => $default) {
+        $out[$name] = array(
+            'value'   => bnwp_rest_customiser_value($name),
+            'default' => $default,
+            'stored'  => is_array($mods) && array_key_exists($name, $mods),
+        );
+    }
+    return rest_ensure_response(array('boxes' => $out));
+}
+
+function bnwp_rest_customiser_write(WP_REST_Request $request) {
+    $set    = $request->get_param('set');
+    $expect = $request->get_param('expect');
+    $boxes  = bnwp_rest_customiser_boxes();
+
+    if (!is_array($set) || !$set) {
+        return new WP_Error('bnwp_nothing_to_set', 'Send "set": {box: text}.', array('status' => 400));
+    }
+    $expect = is_array($expect) ? $expect : array();
+
+    // Check everything before writing anything: all or nothing.
+    $conflicts = array();
+    foreach ($set as $name => $value) {
+        if (!array_key_exists($name, $boxes)) {
+            return new WP_Error('bnwp_unknown_box', sprintf('"%s" is not a box this endpoint handles.', $name), array('status' => 400));
+        }
+        if (!is_string($value)) {
+            return new WP_Error('bnwp_bad_value', sprintf('"%s" must be text.', $name), array('status' => 400));
+        }
+        if (!array_key_exists($name, $expect)) {
+            return new WP_Error('bnwp_expect_missing', sprintf('Say what "%s" holds now, in "expect".', $name), array('status' => 400));
+        }
+        $now = bnwp_rest_customiser_value($name);
+        if ((string) $expect[$name] !== $now) {
+            $conflicts[$name] = $now;
+        }
+    }
+    if ($conflicts) {
+        return new WP_Error('bnwp_changed_on_site', 'Changed on the site since it was read; nothing was written.',
+            array('status' => 409, 'current' => $conflicts));
+    }
+
+    // The same cleaning the Customiser applies to these boxes.
+    $written = array();
+    foreach ($set as $name => $value) {
+        set_theme_mod($name, sanitize_textarea_field($value));
+        $written[$name] = bnwp_rest_customiser_value($name);
+    }
+    bnwp_purge_page_cache();   // the home page shows every one of these
+
+    return rest_ensure_response(array('written' => $written));
+}
+
+function bnwp_rest_customiser_routes() {
+    register_rest_route('bnwp/v1', '/customiser', array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => 'bnwp_rest_customiser_read',
+            'permission_callback' => function () { return current_user_can('edit_theme_options'); },
+        ),
+        array(
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => 'bnwp_rest_customiser_write',
+            'permission_callback' => function () { return current_user_can('edit_theme_options'); },
+        ),
+    ));
+}
+add_action('rest_api_init', 'bnwp_rest_customiser_routes');
+
 
 /* -------------------------------------------------------------------------
  * 10. Admin — custom fields for projects, members and posts

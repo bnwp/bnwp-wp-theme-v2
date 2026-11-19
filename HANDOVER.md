@@ -69,6 +69,21 @@ returns 200 has not necessarily stored what you sent.
 
 ## Writing content over the REST API
 
+**The Customiser boxes have their own endpoint**, because WordPress keeps
+theme settings out of the REST API: `GET /bnwp/v1/customiser` returns every
+home-page box (Impact numbers, Funding, Partners, Social channels, Home page
+text), and `POST` with `{"set": {box: text}, "expect": {box: text-as-read}}`
+writes them. A box whose current text is not what `expect` says was changed in
+the Customiser since it was read, and the whole write is refused with 409 and
+the site's text — so a script cannot replace an editor's change unseen. It
+needs `edit_theme_options`, cleans with `sanitize_textarea_field` as the
+Customiser does, and purges LiteSpeed after writing.
+
+Post meta has no such guard. `build/add-impact.py` and `build/link-posts.py`
+keep their own record and refuse to overwrite a field edited on the site; a
+new script should do the same. One did not, once, and an editor's figures for
+Wiktionary 2026 were lost.
+
 **The database is `utf8`, not `utf8mb4`.** Anything outside the Basic
 Multilingual Plane — in practice, emoji — cannot be stored and the write fails
 with `rest_meta_database_error`. Bengali is unaffected. Encode emoji as hex
