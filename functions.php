@@ -4271,7 +4271,12 @@ function bnwp_comment_initial($name) {
     if ($name === '') {
         return '?';
     }
-    return mb_strtoupper(mb_substr($name, 0, 1, 'UTF-8'), 'UTF-8');
+    // WordPress supplies mb_substr() where the mbstring extension is missing,
+    // but not mb_strtoupper(): without this check such a host would fail on
+    // every page with a comment. Bengali has no case, so only Latin initials
+    // lose their capital there.
+    $first = mb_substr($name, 0, 1, 'UTF-8');
+    return function_exists('mb_strtoupper') ? mb_strtoupper($first, 'UTF-8') : strtoupper($first);
 }
 
 /**
