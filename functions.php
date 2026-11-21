@@ -594,8 +594,11 @@ function bnwp_encode_url($url) {
         return rawurlencode(rawurldecode($segment));
     }, explode('/', $parts['path'])));
 
+    // The port is kept: production has none, but a site on localhost:8888
+    // lost it here and every theme-shipped logo pointed at the wrong server.
     $out = (isset($parts['scheme']) ? $parts['scheme'] . '://' : '')
-        . (isset($parts['host']) ? $parts['host'] : '') . $path;
+        . (isset($parts['host']) ? $parts['host'] : '')
+        . (isset($parts['port']) ? ':' . $parts['port'] : '') . $path;
 
     return empty($parts['query']) ? $out : $out . '?' . $parts['query'];
 }
@@ -1436,6 +1439,7 @@ function bnwp_home_defaults() {
         'team_title'     => array('মূল দল', 'Core team'),
         'team_sub'       => array('যারা এই উদ্যোগ এগিয়ে নিচ্ছেন', 'The people driving this initiative'),
         'team_all'       => array('সব সদস্য', 'All members'),
+        'funders_title'  => array('আর্থিক পৃষ্ঠপোষকতায়', 'Funded by'),
         'partners_title' => array('আমাদের অংশীদার', 'Our partners'),
 
         // The members listing at /teams/. It is an archive rather than a
@@ -3207,7 +3211,23 @@ function bnwp_partners_default() {
 
 /** One partner per line: Bengali name | English name | URL | image */
 function bnwp_partners() {
-    $raw  = get_theme_mod('bnwp_partners', bnwp_partners_default());
+    return bnwp_logo_rows(get_theme_mod('bnwp_partners', bnwp_partners_default()));
+}
+
+/** Who funds the work, shown above the partners. Wikimedia Bangladesh by default. */
+function bnwp_funders_default() {
+    return 'উইকিমিডিয়া বাংলাদেশ | Wikimedia Bangladesh | https://wikimedia.org.bd/ | Wikimedia_Bangladesh_logo.png';
+}
+
+function bnwp_funders() {
+    return bnwp_logo_rows(get_theme_mod('bnwp_funders', bnwp_funders_default()));
+}
+
+/**
+ * "Bengali name | English name | URL | image" rows, as the Partners and
+ * Funding boxes in the Customiser both hold them.
+ */
+function bnwp_logo_rows($raw) {
     $rows = array();
 
     foreach (preg_split('/\r\n|\r|\n/', (string) $raw) as $line) {
@@ -3234,6 +3254,23 @@ function bnwp_partners() {
         );
     }
     return $rows;
+}
+
+/** A row of logo tiles: the partners, or with $modifier 'funders', the funders. */
+function bnwp_logo_tiles($rows, $modifier = '') {
+    if (!$rows) {
+        return;
+    }
+    printf('<div class="partners%s" data-stagger>', $modifier !== '' ? ' partners--' . esc_attr($modifier) : '');
+    foreach ($rows as $p) {
+        $tag = $p['url'] !== '' ? 'a' : 'div';
+        printf('<%s class="partner reveal"%s>', $tag, $p['url'] !== '' ? ' href="' . esc_url($p['url']) . '" rel="noopener"' : '');
+        if ($p['image'] !== '') {
+            bnwp_image($p['image'], array('w' => 250, 'alt' => $p['name'], 'fit' => 'contain'));
+        }
+        printf('<span class="partner__name">%s</span></%s>', esc_html($p['name']), $tag);
+    }
+    echo '</div>';
 }
 
 function bnwp_socials_default() {
@@ -3343,6 +3380,7 @@ function bnwp_customize($wp_customize) {
         'team_title'     => __('Team: heading', 'bnwp'),
         'team_sub'       => __('Team: sub-heading', 'bnwp'),
         'team_all'       => __('Team: link to all', 'bnwp'),
+        'funders_title'  => __('Funding: heading', 'bnwp'),
         'partners_title' => __('Partners: heading', 'bnwp'),
     );
     foreach ($bnwp_home_labels as $bnwp_key => $bnwp_label) {
@@ -3412,6 +3450,23 @@ function bnwp_customize($wp_customize) {
         'input_attrs' => array('rows' => 6, 'style' => 'font-family:ui-monospace,monospace;'),
     ));
 
+    $wp_customize->add_section('bnwp_funders_section', array(
+        'title'       => __('Funding', 'bnwp'),
+        'priority'    => 31,
+        'description' => __('Who funds the work, shown above the partners on the home page under its own heading (set in Home page text). One per line, the same shape as Partners:<br><strong>Bengali name | English name | URL | image</strong><br><br>Leave it empty to hide the heading and the row.', 'bnwp'),
+    ));
+    $wp_customize->add_setting('bnwp_funders', array(
+        'default'           => bnwp_funders_default(),
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport'         => 'refresh',
+    ));
+    $wp_customize->add_control('bnwp_funders', array(
+        'label'       => __('Rows', 'bnwp'),
+        'section'     => 'bnwp_funders_section',
+        'type'        => 'textarea',
+        'input_attrs' => array('rows' => 3, 'style' => 'font-family:ui-monospace,monospace;'),
+    ));
+
     $wp_customize->add_section('bnwp_socials_section', array(
         'title'       => __('Social channels', 'bnwp'),
         'priority'    => 32,
@@ -3430,6 +3485,112 @@ function bnwp_customize($wp_customize) {
     ));
 }
 add_action('customize_register', 'bnwp_customize');
+
+/* -------------------------------------------------------------------------
+ * The Customiser boxes over REST
+ *
+ * WordPress keeps theme settings out of the REST API, so the home page's
+ * boxes could only be changed by hand. /bnwp/v1/customiser reads and writes
+ * exactly those boxes and nothing else, for users who could open the
+ * Customiser anyway.
+ *
+ * A write must say what it expects each box to hold now ("expect"). If the
+ * site disagrees — somebody changed it in the Customiser since it was read —
+ * nothing is written and the reply is 409 with what the site has. That is
+ * the guard a script needs so it never replaces an editor's change unseen.
+ * ---------------------------------------------------------------------- */
+
+/** Box name => default, for every box the endpoint may read or write. */
+function bnwp_rest_customiser_boxes() {
+    $boxes = array(
+        'bnwp_stats'    => bnwp_stats_default(),
+        'bnwp_funders'  => bnwp_funders_default(),
+        'bnwp_partners' => bnwp_partners_default(),
+        'bnwp_socials'  => bnwp_socials_default(),
+    );
+    foreach (array_keys(bnwp_home_defaults()) as $key) {
+        $boxes['bnwp_home_' . $key] = '';   // empty means "use the theme's wording"
+    }
+    return $boxes;
+}
+
+/** What one box holds now: its stored text, or the default when unset. */
+function bnwp_rest_customiser_value($name) {
+    $boxes = bnwp_rest_customiser_boxes();
+    return (string) get_theme_mod($name, $boxes[$name]);
+}
+
+function bnwp_rest_customiser_read() {
+    $mods = get_theme_mods();
+    $out  = array();
+    foreach (bnwp_rest_customiser_boxes() as $name => $default) {
+        $out[$name] = array(
+            'value'   => bnwp_rest_customiser_value($name),
+            'default' => $default,
+            'stored'  => is_array($mods) && array_key_exists($name, $mods),
+        );
+    }
+    return rest_ensure_response(array('boxes' => $out));
+}
+
+function bnwp_rest_customiser_write(WP_REST_Request $request) {
+    $set    = $request->get_param('set');
+    $expect = $request->get_param('expect');
+    $boxes  = bnwp_rest_customiser_boxes();
+
+    if (!is_array($set) || !$set) {
+        return new WP_Error('bnwp_nothing_to_set', 'Send "set": {box: text}.', array('status' => 400));
+    }
+    $expect = is_array($expect) ? $expect : array();
+
+    // Check everything before writing anything: all or nothing.
+    $conflicts = array();
+    foreach ($set as $name => $value) {
+        if (!array_key_exists($name, $boxes)) {
+            return new WP_Error('bnwp_unknown_box', sprintf('"%s" is not a box this endpoint handles.', $name), array('status' => 400));
+        }
+        if (!is_string($value)) {
+            return new WP_Error('bnwp_bad_value', sprintf('"%s" must be text.', $name), array('status' => 400));
+        }
+        if (!array_key_exists($name, $expect)) {
+            return new WP_Error('bnwp_expect_missing', sprintf('Say what "%s" holds now, in "expect".', $name), array('status' => 400));
+        }
+        $now = bnwp_rest_customiser_value($name);
+        if ((string) $expect[$name] !== $now) {
+            $conflicts[$name] = $now;
+        }
+    }
+    if ($conflicts) {
+        return new WP_Error('bnwp_changed_on_site', 'Changed on the site since it was read; nothing was written.',
+            array('status' => 409, 'current' => $conflicts));
+    }
+
+    // The same cleaning the Customiser applies to these boxes.
+    $written = array();
+    foreach ($set as $name => $value) {
+        set_theme_mod($name, sanitize_textarea_field($value));
+        $written[$name] = bnwp_rest_customiser_value($name);
+    }
+    bnwp_purge_page_cache();   // the home page shows every one of these
+
+    return rest_ensure_response(array('written' => $written));
+}
+
+function bnwp_rest_customiser_routes() {
+    register_rest_route('bnwp/v1', '/customiser', array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => 'bnwp_rest_customiser_read',
+            'permission_callback' => function () { return current_user_can('edit_theme_options'); },
+        ),
+        array(
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => 'bnwp_rest_customiser_write',
+            'permission_callback' => function () { return current_user_can('edit_theme_options'); },
+        ),
+    ));
+}
+add_action('rest_api_init', 'bnwp_rest_customiser_routes');
 
 
 /* -------------------------------------------------------------------------

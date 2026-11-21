@@ -182,26 +182,24 @@ if ($people) : ?>
 <?php endif; ?>
 
 
+<?php
+// Funders first, then partners: one section, two headings. Either list can be
+// emptied in the Customiser, and its heading goes with it.
+$funders  = bnwp_funders();
+$partners = bnwp_partners();
+if ($funders || $partners) : ?>
 <section class="section">
     <div class="wrap" style="text-align:center;">
-        <h2 style="font-size:var(--step-3);"><?php echo esc_html(bnwp_home_text('partners_title')); ?></h2>
-        <?php $partners = bnwp_partners(); ?>
+        <?php if ($funders) : ?>
+            <h2 class="partners__title"><?php echo esc_html(bnwp_home_text('funders_title')); ?></h2>
+            <?php bnwp_logo_tiles($funders, 'funders'); ?>
+        <?php endif; ?>
         <?php if ($partners) : ?>
-        <div class="partners" data-stagger style="margin-top:2rem;">
-            <?php foreach ($partners as $p) : ?>
-                <?php $tag = $p['url'] !== '' ? 'a' : 'div'; ?>
-                <<?php echo $tag; ?> class="partner reveal"<?php
-                    echo $p['url'] !== '' ? ' href="' . esc_url($p['url']) . '" rel="noopener"' : '';
-                ?>>
-                    <?php if ($p['image'] !== '') : ?>
-                        <?php bnwp_image($p['image'], array('w' => 250, 'alt' => $p['name'], 'fit' => 'contain')); ?>
-                    <?php endif; ?>
-                    <span class="partner__name"><?php echo esc_html($p['name']); ?></span>
-                </<?php echo $tag; ?>>
-            <?php endforeach; ?>
-        </div>
+            <h2 class="partners__title"><?php echo esc_html(bnwp_home_text('partners_title')); ?></h2>
+            <?php bnwp_logo_tiles($partners); ?>
         <?php endif; ?>
     </div>
 </section>
+<?php endif; ?>
 
 <?php get_footer(); ?>
